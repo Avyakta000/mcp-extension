@@ -1,0 +1,24 @@
+{
+  "name": "chatgpt-mcp-extension",
+  "version": "1.0.0",
+  "description": "ChatGPT MCP Extension - Integrate MCP tools with ChatGPT",
+  "scripts": {
+    "dev": "webpack --mode development --watch",
+    "dev:notify": "node scripts/watch-and-notify.js",
+    "build": "webpack --mode production",
+    "type-check": "tsc --noEmit",
+    "watch": "npm run dev"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "@types/node": "^20.12.7",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.4.5",
+    "webpack": "^5.91.0",
+    "webpack-cli": "^5.1.4",
+    "copy-webpack-plugin": "^12.0.2"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.2"
+  }
+}

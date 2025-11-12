@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ChatGPT MCP Extension</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 320px;
+      min-height: 400px;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .header {
+      padding: 20px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+    }
+
+    .header h1 {
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    .status-card {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .status-label {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+
+    .status-value {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-badge.connected {
+      background: rgba(16, 185, 129, 0.3);
+    }
+
+    .status-badge.disconnected {
+      background: rgba(239, 68, 68, 0.3);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 10px;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn.primary {
+      background: rgba(255, 255, 255, 0.9);
+      color: #667eea;
+    }
+
+    .btn.primary:hover {
+      background: white;
+    }
+
+    .tools-list {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 12px;
+    }
+
+    .tool-item {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+
+    .tool-name {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .tool-description {
+      opacity: 0.8;
+      font-size: 11px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.4);
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      opacity: 0.9;
+    }
+
+    .form-input,
+    .form-select {
+      width: 100%;
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 6px;
+      color: white;
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .form-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .form-select {
+      cursor: pointer;
+    }
+
+    .form-select option {
+      background: #667eea;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🔧 MCP Extension</h1>
+    <p>ChatGPT Tool Integration</p>
+  </div>
+
+  <div class="content">
+    <div class="status-card">
+      <div class="status-row">
+        <span class="status-label">Connection Status</span>
+        <span id="connectionStatus" class="status-badge disconnected">
+          ● Disconnected
+        </span>
+      </div>
+
+      <div class="status-row">
+        <span class="status-label">Transport</span>
+        <span id="transport" class="status-value">-</span>
+      </div>
+
+      <div class="status-row">
+        <span class="status-label">Available Tools</span>
+        <span id="toolCount" class="status-value">0</span>
+      </div>
+    </div>
+
+    <div class="status-card">
+      <div class="form-group">
+        <label class="form-label">Proxy URL</label>
+        <input id="proxyUrl" type="text" class="form-input" value="ws://localhost:3006/message" placeholder="Enter proxy URL">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Transport Type</label>
+        <select id="transportType" class="form-select">
+          <option value="websocket">WebSocket (ws://)</option>
+          <option value="sse">SSE (http:// or https://)</option>
+          <option value="streamable-http">Streamable HTTP (http:// or https://)</option>
+        </select>
+      </div>
+    </div>
+
+    <button id="connectBtn" class="btn primary">Connect to Proxy</button>
+    <button id="disconnectBtn" class="btn" style="display: none;">Disconnect</button>
+    <button id="refreshBtn" class="btn">Refresh Tools</button>
+
+    <div id="toolsList" class="tools-list" style="display: none;"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
