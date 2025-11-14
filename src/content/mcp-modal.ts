@@ -22,17 +22,21 @@ export class MCPModal {
   };
   private onToggleSidebar?: (enabled: boolean) => void;
   private onSettingsChange?: (settings: MCPSettings) => void;
+  private getSelectedTools?: () => string[];
   private tools: MCPTool[] = [];
   private adapter: ChatGPTAdapter;
+  private isSidebarVisible: boolean = false;
 
   constructor(
     adapter: ChatGPTAdapter,
     onToggleSidebar?: (enabled: boolean) => void,
-    onSettingsChange?: (settings: MCPSettings) => void
+    onSettingsChange?: (settings: MCPSettings) => void,
+    getSelectedTools?: () => string[]
   ) {
     this.adapter = adapter;
     this.onToggleSidebar = onToggleSidebar;
     this.onSettingsChange = onSettingsChange;
+    this.getSelectedTools = getSelectedTools;
     this.loadSettings();
   }
 
@@ -87,10 +91,19 @@ export class MCPModal {
   show(): void {
     if (this.modal) {
       this.modal.style.display = 'flex';
+      this.updateModalContent();
       return;
     }
 
     this.createModal();
+  }
+
+  /**
+   * Update sidebar visibility state
+   */
+  setSidebarVisible(visible: boolean): void {
+    this.isSidebarVisible = visible;
+    this.updateModalContent();
   }
 
   /**
@@ -128,9 +141,11 @@ export class MCPModal {
     content.style.cssText = `
       background: white;
       border-radius: 12px;
-      padding: 24px;
-      min-width: 400px;
-      max-width: 500px;
+      padding: 20px;
+      width: 450px;
+      max-width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     `;
 
@@ -188,16 +203,14 @@ export class MCPModal {
     // MCP Toggle
     const mcpToggle = this.createToggleRow(
       'Enable MCP',
-      'Open MCP tools sidebar',
+      'Enable MCP functionality',
       this.settings.enabled,
       (value) => {
         this.settings.enabled = value;
         this.saveSettings();
 
-        // Toggle sidebar
-        if (this.onToggleSidebar) {
-          this.onToggleSidebar(value);
-        }
+        // Just save the setting, don't toggle sidebar
+        // Sidebar is controlled by the dedicated button below
       }
     );
     settingsContainer.appendChild(mcpToggle);
@@ -214,11 +227,42 @@ export class MCPModal {
     );
     settingsContainer.appendChild(autoExecuteToggle);
 
-    // Instructions Section
-    const instructionsSection = this.createInstructionsSection();
-    settingsContainer.appendChild(instructionsSection);
+    // Sidebar Toggle Button
+    const sidebarButton = document.createElement('button');
+    sidebarButton.textContent = this.isSidebarVisible ? '👁️ Hide Sidebar' : '👁️ Show Sidebar';
+    sidebarButton.style.cssText = `
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 16px;
+      transition: opacity 0.2s;
+    `;
+    sidebarButton.onmouseenter = () => sidebarButton.style.opacity = '0.9';
+    sidebarButton.onmouseleave = () => sidebarButton.style.opacity = '1';
+    sidebarButton.onclick = () => {
+      this.isSidebarVisible = !this.isSidebarVisible;
+      if (this.onToggleSidebar) {
+        this.onToggleSidebar(this.isSidebarVisible);
+      }
+      sidebarButton.textContent = this.isSidebarVisible ? '👁️ Hide Sidebar' : '👁️ Show Sidebar';
+    };
+    settingsContainer.appendChild(sidebarButton);
 
     content.appendChild(settingsContainer);
+
+    // Instructions Section (separate from settings container for better layout)
+    const instructionsSection = this.createInstructionsSection();
+    content.appendChild(instructionsSection);
+
+    // Instructions preview section
+    const previewSection = this.createInstructionsPreviewSection();
+    content.appendChild(previewSection);
     overlay.appendChild(content);
 
     // Click outside to close
@@ -354,10 +398,15 @@ export class MCPModal {
    */
   private createInstructionsSection(): HTMLElement {
     const section = document.createElement('div');
+    section.id = 'mcp-instructions-section';
     section.style.cssText = `
       display: flex;
       flex-direction: column;
       gap: 8px;
+      padding: 16px;
+      background: #f9fafb;
+      border-radius: 8px;
+      margin-top: 16px;
     `;
 
     const label = document.createElement('label');
@@ -377,18 +426,21 @@ export class MCPModal {
     `;
 
     const textarea = document.createElement('textarea');
+    textarea.id = 'mcp-instructions-textarea';
     textarea.value = this.settings.instructions;
     textarea.placeholder = 'e.g., Always explain your reasoning before using tools...';
-    textarea.rows = 4;
+    textarea.rows = 3;
     textarea.style.cssText = `
       width: 100%;
-      padding: 12px;
+      padding: 10px;
       border: 1px solid #d1d5db;
       border-radius: 8px;
-      font-size: 14px;
+      font-size: 13px;
       font-family: system-ui, -apple-system, sans-serif;
       resize: vertical;
       box-sizing: border-box;
+      background: white;
+      color: #111827;
     `;
 
     textarea.onfocus = () => {
@@ -444,6 +496,35 @@ export class MCPModal {
       margin-bottom: 4px;
     `;
 
+    // File upload button container
+    const fileUploadRow = document.createElement('div');
+    fileUploadRow.style.cssText = `
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    `;
+
+    // Attach file button
+    const attachButton = document.createElement('button');
+    attachButton.textContent = '📎 Attach Instructions File';
+    attachButton.style.cssText = `
+      flex: 1;
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    `;
+    attachButton.onmouseenter = () => attachButton.style.opacity = '0.8';
+    attachButton.onmouseleave = () => attachButton.style.opacity = '1';
+    attachButton.onclick = () => this.attachInstructionsFile();
+
+    fileUploadRow.appendChild(attachButton);
+
     const buttonsRow = document.createElement('div');
     buttonsRow.style.cssText = `
       display: flex;
@@ -492,9 +573,72 @@ export class MCPModal {
     buttonsRow.appendChild(insertButton);
 
     section.appendChild(infoText);
+    section.appendChild(fileUploadRow);
     section.appendChild(buttonsRow);
 
     return section;
+  }
+
+  /**
+   * Attach instructions as a file to ChatGPT input
+   */
+  private async attachInstructionsFile(): Promise<void> {
+    try {
+      // Filter tools based on selection
+      const selectedToolNames = this.getSelectedTools ? this.getSelectedTools() : this.tools.map(t => t.name);
+      const selectedTools = this.tools.filter(tool => selectedToolNames.includes(tool.name));
+
+      // Generate instructions content
+      const instructions = generateMCPInstructions(selectedTools, this.settings.instructions);
+
+      // Create a File object
+      const file = new File([instructions], 'instructions.md', { type: 'text/markdown' });
+
+      // Use ChatGPTAdapter to attach the file
+      const success = await this.adapter.attachFile(file);
+
+      if (success) {
+        this.showNotification('✓ Instructions file attached!', 'success');
+        console.log('[MCP Modal] Instructions file attached to ChatGPT');
+
+        // Optionally hide modal after attachment
+        setTimeout(() => this.hide(), 1500);
+      } else {
+        throw new Error('Failed to attach file to ChatGPT input');
+      }
+    } catch (error) {
+      console.error('[MCP Modal] Failed to attach file:', error);
+      this.showNotification('✗ Failed to attach file', 'error');
+    }
+  }
+
+  /**
+   * Show temporary notification
+   */
+  private showNotification(message: string, type: 'success' | 'error'): void {
+    const notification = document.createElement('div');
+    notification.textContent = message;
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      background: ${type === 'success' ? 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)' : 'linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%)'};
+      color: white;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      z-index: 100000;
+      animation: slideIn 0.3s ease-out;
+    `;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      notification.style.animation = 'slideOut 0.3s ease-out';
+      setTimeout(() => notification.remove(), 300);
+    }, 2000);
   }
 
   /**
@@ -503,7 +647,11 @@ export class MCPModal {
   private async copyInstructions(button: HTMLButtonElement): Promise<void> {
     const originalText = button.textContent;
     try {
-      const instructions = generateMCPInstructions(this.tools, this.settings.instructions);
+      // Filter tools based on selection
+      const selectedToolNames = this.getSelectedTools ? this.getSelectedTools() : this.tools.map(t => t.name);
+      const selectedTools = this.tools.filter(tool => selectedToolNames.includes(tool.name));
+
+      const instructions = generateMCPInstructions(selectedTools, this.settings.instructions);
       await navigator.clipboard.writeText(instructions);
 
       button.textContent = '✓ Copied!';
@@ -534,7 +682,11 @@ export class MCPModal {
   private insertInstructions(button: HTMLButtonElement): void {
     const originalText = button.textContent;
     try {
-      const instructions = generateMCPInstructions(this.tools, this.settings.instructions);
+      // Filter tools based on selection
+      const selectedToolNames = this.getSelectedTools ? this.getSelectedTools() : this.tools.map(t => t.name);
+      const selectedTools = this.tools.filter(tool => selectedToolNames.includes(tool.name));
+
+      const instructions = generateMCPInstructions(selectedTools, this.settings.instructions);
       const success = this.adapter.insertText(instructions);
 
       if (success) {
@@ -579,5 +731,107 @@ export class MCPModal {
   updateSettings(settings: Partial<MCPSettings>): void {
     this.settings = { ...this.settings, ...settings };
     this.saveSettings();
+  }
+
+  /**
+   * Create instructions preview section
+   */
+  private createInstructionsPreviewSection(): HTMLElement {
+    const section = document.createElement('div');
+    section.id = 'mcp-instructions-preview-section';
+    section.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px;
+      background: #f9fafb;
+      border-radius: 8px;
+      margin-top: 12px;
+    `;
+
+    const label = document.createElement('label');
+    label.textContent = 'Instructions Preview';
+    label.style.cssText = `
+      font-weight: 600;
+      font-size: 13px;
+      color: #111827;
+    `;
+
+    const description = document.createElement('div');
+    description.textContent = 'First 500 chars of generated instructions';
+    description.style.cssText = `
+      font-size: 11px;
+      color: #6b7280;
+      margin-bottom: 2px;
+    `;
+
+    const preview = document.createElement('div');
+    preview.id = 'mcp-instructions-preview';
+    preview.style.cssText = `
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: monospace;
+      background: white;
+      color: #111827;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 120px;
+    `;
+
+    // Generate initial preview
+    this.updateInstructionsPreview();
+
+    section.appendChild(label);
+    section.appendChild(description);
+    section.appendChild(preview);
+
+    return section;
+  }
+
+  /**
+   * Update instructions preview
+   */
+  private updateInstructionsPreview(): void {
+    const preview = document.getElementById('mcp-instructions-preview');
+    if (!preview) return;
+
+    // Filter tools based on selection
+    const selectedToolNames = this.getSelectedTools ? this.getSelectedTools() : this.tools.map(t => t.name);
+    const selectedTools = this.tools.filter(tool => selectedToolNames.includes(tool.name));
+
+    if (selectedTools.length === 0) {
+      preview.textContent = 'No tools selected. Please select tools from the sidebar to generate instructions.';
+      preview.style.color = '#9ca3af';
+      preview.style.fontStyle = 'italic';
+    } else {
+      const instructions = generateMCPInstructions(selectedTools, this.settings.instructions);
+      preview.textContent = instructions.substring(0, 500) + (instructions.length > 500 ? '\n\n... (truncated for preview)' : '');
+      preview.style.color = '#111827';
+      preview.style.fontStyle = 'normal';
+    }
+  }
+
+  /**
+   * Refresh preview (called from external sources when tools selection changes)
+   */
+  refreshPreview(): void {
+    this.updateInstructionsPreview();
+  }
+
+  /**
+   * Update modal content (refresh dynamic elements)
+   */
+  private updateModalContent(): void {
+    // Update textarea if it exists
+    const textarea = document.getElementById('mcp-instructions-textarea') as HTMLTextAreaElement;
+    if (textarea) {
+      textarea.value = this.settings.instructions;
+    }
+
+    // Update preview
+    this.updateInstructionsPreview();
   }
 }

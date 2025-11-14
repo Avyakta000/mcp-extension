@@ -2,6 +2,7 @@ import { ChatGPTAdapter } from './chatgpt-adapter';
 import { ToolCallParser } from './tool-parser';
 import { ToolExecutor } from './tool-executor';
 import { MCPModal, MCPSettings } from './mcp-modal';
+import { MCPSidebar, SidebarSettings } from './sidebar';
 import { MessageType, ConnectionStatus, MCPTool, DetectedToolCall } from '../types';
 
 class ChatGPTMCPExtension {
@@ -9,25 +10,36 @@ class ChatGPTMCPExtension {
   private parser: ToolCallParser;
   private executor: ToolExecutor;
   private modal: MCPModal;
+  private sidebar: MCPSidebar;
   private connectionStatus: ConnectionStatus = { isConnected: false };
   private availableTools: MCPTool[] = [];
   private processedElements = new WeakSet<HTMLElement>();
-  private sidebarOpen = false;
   private observer: MutationObserver | null = null;
   private mcpSettings: MCPSettings = {
     enabled: false,
     autoExecute: false,
     instructions: ''
   };
+  private mcpButton: HTMLButtonElement | null = null;
 
   constructor() {
     this.adapter = new ChatGPTAdapter();
     this.parser = new ToolCallParser();
     this.executor = new ToolExecutor(this.adapter);
+
+    // Initialize sidebar first
+    this.sidebar = new MCPSidebar(
+      this.adapter,
+      (settings) => this.handleSidebarSettingsChange(settings),
+      () => this.handleToolSelectionChange()
+    );
+
+    // Initialize modal with sidebar toggle callback
     this.modal = new MCPModal(
       this.adapter,
-      (enabled) => this.handleMCPToggle(enabled),
-      (settings) => this.handleSettingsChange(settings)
+      (enabled) => this.handleSidebarToggle(enabled),
+      (settings) => this.handleSettingsChange(settings),
+      () => this.sidebar.getSelectedTools()
     );
 
     console.log('[MCP Extension] Initializing...');
@@ -78,10 +90,8 @@ class ChatGPTMCPExtension {
 
       console.log('[MCP Extension] Settings loaded:', this.mcpSettings);
 
-      // If MCP was enabled, open sidebar
-      if (this.mcpSettings.enabled) {
-        setTimeout(() => this.showToolsSidebar(), 500);
-      }
+      // Don't auto-open sidebar on load
+      // User will manually toggle sidebar using the button
     } catch (error) {
       console.error('[MCP Extension] Failed to load settings:', error);
     }
@@ -102,6 +112,21 @@ class ChatGPTMCPExtension {
         console.log('[MCP Extension] Connection status:', this.connectionStatus);
       }
 
+      // Auto-connect if not connected
+      if (!this.connectionStatus.isConnected) {
+        console.log('[MCP Extension] Not connected, attempting auto-connect...');
+        const connectResponse = await chrome.runtime.sendMessage({
+          type: MessageType.MCP_CONNECT
+        });
+
+        if (connectResponse.success) {
+          this.connectionStatus = connectResponse.data;
+          console.log('[MCP Extension] Auto-connect successful:', this.connectionStatus);
+        } else {
+          console.warn('[MCP Extension] Auto-connect failed:', connectResponse.error);
+        }
+      }
+
       // Get available tools
       const toolsResponse = await chrome.runtime.sendMessage({
         type: MessageType.MCP_LIST_TOOLS
@@ -110,6 +135,7 @@ class ChatGPTMCPExtension {
       if (toolsResponse.success && toolsResponse.data?.tools) {
         this.availableTools = toolsResponse.data.tools;
         this.modal.updateTools(this.availableTools);
+        this.sidebar.updateTools(this.availableTools);
         console.log(`[MCP Extension] ${this.availableTools.length} tools available`);
       }
     } catch (error) {
@@ -126,23 +152,46 @@ class ChatGPTMCPExtension {
     });
 
     if (button) {
-      this.updateButtonState(button);
+      this.mcpButton = button;
+      this.updateButtonState();
       console.log('[MCP Extension] MCP button created');
     }
   }
 
   /**
-   * Handle MCP toggle from modal
+   * Handle sidebar toggle from modal
    */
-  private handleMCPToggle(enabled: boolean): void {
-    console.log('[MCP Extension] MCP toggled:', enabled);
-    this.mcpSettings.enabled = enabled;
+  private handleSidebarToggle(enabled: boolean): void {
+    console.log('[MCP Extension] Sidebar toggle:', enabled);
 
     if (enabled) {
-      this.showToolsSidebar();
+      this.sidebar.show();
     } else {
-      this.hideToolsSidebar();
+      this.sidebar.hide();
     }
+
+    this.updateButtonHighlight();
+  }
+
+  /**
+   * Handle sidebar settings change
+   */
+  private handleSidebarSettingsChange(settings: SidebarSettings): void {
+    console.log('[MCP Extension] Sidebar settings changed:', settings);
+    this.mcpSettings.enabled = settings.enabled;
+    this.mcpSettings.autoExecute = settings.autoExecute;
+    this.mcpSettings.instructions = settings.instructions;
+
+    this.updateButtonHighlight();
+  }
+
+  /**
+   * Handle tool selection change in sidebar
+   */
+  private handleToolSelectionChange(): void {
+    console.log('[MCP Extension] Tool selection changed');
+    // Refresh modal preview if it's open
+    this.modal.refreshPreview();
   }
 
   /**
@@ -151,6 +200,8 @@ class ChatGPTMCPExtension {
   private handleSettingsChange(settings: MCPSettings): void {
     console.log('[MCP Extension] Settings changed:', settings);
     this.mcpSettings = settings;
+    this.sidebar.updateCustomInstructions(settings.instructions);
+    this.modal.refreshPreview();
 
     // If instructions changed and MCP is enabled, optionally inject instructions
     if (settings.enabled && settings.instructions) {
@@ -168,222 +219,42 @@ class ChatGPTMCPExtension {
   }
 
   /**
-   * Update button state based on connection
+   * Update button state based on connection and MCP enabled status
    */
-  private updateButtonState(button: HTMLButtonElement): void {
+  private updateButtonState(): void {
+    if (!this.mcpButton) return;
+
+    const isEnabled = this.sidebar.isVisibleState();
+
     if (this.connectionStatus.isConnected) {
-      button.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-      button.title = `MCP Tools (Connected via ${this.connectionStatus.transport})`;
-    } else {
-      button.style.background = 'linear-gradient(135deg, #bbb 0%, #888 100%)';
-      button.title = 'MCP Tools (Disconnected)';
-    }
-  }
-
-  /**
-   * Toggle sidebar (placeholder for now)
-   */
-  private toggleSidebar(): void {
-    this.sidebarOpen = !this.sidebarOpen;
-    console.log('[MCP Extension] Sidebar toggled:', this.sidebarOpen);
-
-    // TODO: Implement sidebar UI showing available tools
-    if (this.sidebarOpen) {
-      this.showToolsSidebar();
-    } else {
-      this.hideToolsSidebar();
-    }
-  }
-
-  /**
-   * Show tools sidebar
-   */
-  private showToolsSidebar(): void {
-    // Check if sidebar already exists
-    let sidebar = document.getElementById('mcp-tools-sidebar');
-    if (sidebar) {
-      sidebar.style.display = 'block';
-      return;
-    }
-
-    // Create sidebar
-    sidebar = document.createElement('div');
-    sidebar.id = 'mcp-tools-sidebar';
-    sidebar.style.cssText = `
-      position: fixed;
-      top: 0;
-      right: 0;
-      width: 320px;
-      height: 100vh;
-      background: white;
-      box-shadow: -2px 0 8px rgba(0,0,0,0.1);
-      z-index: 10000;
-      overflow-y: auto;
-      padding: 16px;
-      font-family: system-ui, -apple-system, sans-serif;
-    `;
-
-    // Header
-    const header = document.createElement('div');
-    header.style.cssText = `
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 2px solid #e5e7eb;
-    `;
-
-    const title = document.createElement('h2');
-    title.textContent = 'MCP Tools';
-    title.style.cssText = `
-      margin: 0;
-      font-size: 18px;
-      font-weight: 600;
-      color: #111827;
-    `;
-
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = '✕';
-    closeBtn.style.cssText = `
-      background: none;
-      border: none;
-      font-size: 20px;
-      cursor: pointer;
-      color: #6b7280;
-      padding: 4px 8px;
-    `;
-    closeBtn.onclick = () => this.hideToolsSidebar();
-
-    header.appendChild(title);
-    header.appendChild(closeBtn);
-    sidebar.appendChild(header);
-
-    // Connection status
-    const status = document.createElement('div');
-    status.style.cssText = `
-      margin-bottom: 16px;
-      padding: 8px 12px;
-      background: ${this.connectionStatus.isConnected ? '#d1fae5' : '#fee2e2'};
-      border-radius: 6px;
-      font-size: 13px;
-      color: ${this.connectionStatus.isConnected ? '#065f46' : '#991b1b'};
-    `;
-    status.textContent = this.connectionStatus.isConnected
-      ? `✓ Connected (${this.connectionStatus.transport})`
-      : '✗ Disconnected';
-    sidebar.appendChild(status);
-
-    // Tools list
-    const toolsList = document.createElement('div');
-    toolsList.style.cssText = `
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    `;
-
-    if (this.availableTools.length === 0) {
-      const emptyState = document.createElement('div');
-      emptyState.textContent = 'No tools available';
-      emptyState.style.cssText = `
-        padding: 32px 16px;
-        text-align: center;
-        color: #6b7280;
-        font-size: 14px;
-      `;
-      toolsList.appendChild(emptyState);
-    } else {
-      this.availableTools.forEach(tool => {
-        const toolCard = this.createToolCard(tool);
-        toolsList.appendChild(toolCard);
-      });
-    }
-
-    sidebar.appendChild(toolsList);
-    document.body.appendChild(sidebar);
-  }
-
-  /**
-   * Create tool card for sidebar
-   */
-  private createToolCard(tool: MCPTool): HTMLElement {
-    const card = document.createElement('div');
-    card.style.cssText = `
-      padding: 12px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    `;
-
-    card.onmouseenter = () => {
-      card.style.background = '#f3f4f6';
-      card.style.borderColor = '#d1d5db';
-    };
-    card.onmouseleave = () => {
-      card.style.background = '#f9fafb';
-      card.style.borderColor = '#e5e7eb';
-    };
-
-    const name = document.createElement('div');
-    name.textContent = tool.name;
-    name.style.cssText = `
-      font-weight: 600;
-      font-size: 14px;
-      color: #111827;
-      margin-bottom: 4px;
-    `;
-
-    const description = document.createElement('div');
-    description.textContent = tool.description || 'No description';
-    description.style.cssText = `
-      font-size: 12px;
-      color: #6b7280;
-      line-height: 1.4;
-    `;
-
-    card.appendChild(name);
-    card.appendChild(description);
-
-    // Click to insert tool template
-    card.onclick = () => {
-      const template = this.generateToolTemplate(tool);
-      this.adapter.insertText(template);
-      this.hideToolsSidebar();
-    };
-
-    return card;
-  }
-
-  /**
-   * Generate tool template for insertion
-   */
-  private generateToolTemplate(tool: MCPTool): string {
-    let template = `Please use the ${tool.name} tool`;
-
-    if (tool.inputSchema?.properties) {
-      const args = Object.keys(tool.inputSchema.properties);
-      if (args.length > 0) {
-        template += ` with the following parameters:\n`;
-        args.forEach(arg => {
-          template += `- ${arg}: [value]\n`;
-        });
+      // Connected - show gradient with highlighting if enabled
+      if (isEnabled) {
+        this.mcpButton.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        this.mcpButton.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.3), 0 4px 8px rgba(0,0,0,0.2)';
+        this.mcpButton.style.transform = 'scale(1.05)';
+      } else {
+        this.mcpButton.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        this.mcpButton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+        this.mcpButton.style.transform = 'scale(1)';
       }
+      this.mcpButton.title = `MCP Tools (Connected via ${this.connectionStatus.transport})${isEnabled ? ' - Active' : ''}`;
+    } else {
+      // Disconnected
+      this.mcpButton.style.background = 'linear-gradient(135deg, #bbb 0%, #888 100%)';
+      this.mcpButton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+      this.mcpButton.style.transform = 'scale(1)';
+      this.mcpButton.title = 'MCP Tools (Disconnected)';
     }
 
-    return template;
+    // Add transition for smooth animation
+    this.mcpButton.style.transition = 'all 0.3s ease';
   }
 
   /**
-   * Hide tools sidebar
+   * Update button highlight based on sidebar visibility
    */
-  private hideToolsSidebar(): void {
-    const sidebar = document.getElementById('mcp-tools-sidebar');
-    if (sidebar) {
-      sidebar.style.display = 'none';
-    }
-    this.sidebarOpen = false;
+  private updateButtonHighlight(): void {
+    this.updateButtonState();
   }
 
   /**
@@ -498,8 +369,11 @@ class ChatGPTMCPExtension {
       if (toolCalls.length > 0) {
         console.log(`[MCP Extension] Parsed ${toolCalls.length} tool call(s):`, toolCalls);
 
-        // Mark as processed
+        // Mark as processed FIRST to prevent duplicate processing
         this.processedElements.add(codeElement);
+
+        // Hide the XML code block
+        this.hideXMLCodeBlock(codeElement);
 
         // Inject UI for each tool call
         toolCalls.forEach(toolCall => {
@@ -507,6 +381,25 @@ class ChatGPTMCPExtension {
         });
       }
     });
+  }
+
+  /**
+   * Hide the XML code block containing function calls
+   */
+  private hideXMLCodeBlock(codeElement: HTMLElement): void {
+    // Find the parent <pre> or code container
+    const preElement = codeElement.closest('pre');
+
+    if (preElement) {
+      // Hide the entire pre block
+      preElement.style.display = 'none';
+    } else if (codeElement.tagName === 'PRE') {
+      // If the element itself is a pre
+      codeElement.style.display = 'none';
+    } else {
+      // Fallback - hide the code element itself
+      codeElement.style.display = 'none';
+    }
   }
 
   /**
@@ -584,8 +477,8 @@ class ChatGPTMCPExtension {
     }
 
     // Execute button or auto-execute indicator
-    if (this.mcpSettings.autoExecute && this.mcpSettings.enabled) {
-      // Auto-execute mode
+    if (this.mcpSettings.autoExecute && this.mcpSettings.enabled && this.connectionStatus.isConnected) {
+      // Auto-execute mode - only if connected
       const autoExecuteIndicator = document.createElement('div');
       autoExecuteIndicator.style.cssText = `
         padding: 8px 12px;
@@ -603,6 +496,29 @@ class ChatGPTMCPExtension {
 
       // Execute automatically
       await this.executor.executeToolInContainer(toolCall, container);
+    } else if (this.mcpSettings.autoExecute && this.mcpSettings.enabled && !this.connectionStatus.isConnected) {
+      // Auto-execute enabled but not connected
+      const warningDiv = document.createElement('div');
+      warningDiv.style.cssText = `
+        padding: 8px 12px;
+        background: #fef3c7;
+        border-radius: 6px;
+        font-size: 13px;
+        color: #92400e;
+        margin-top: 8px;
+      `;
+      warningDiv.innerHTML = `
+        <div style="font-weight: 600; margin-bottom: 4px;">⚠️ Not Connected</div>
+        <div>MCP server is not connected. Click execute manually or check connection.</div>
+      `;
+      container.appendChild(warningDiv);
+
+      // Also add manual execute button
+      const executeBtn = this.executor.createExecutionButton(toolCall, container);
+      container.appendChild(executeBtn);
+
+      // Append to message
+      messageElement.appendChild(container);
     } else {
       // Manual execute mode
       const executeBtn = this.executor.createExecutionButton(toolCall, container);
@@ -636,11 +552,8 @@ class ChatGPTMCPExtension {
   private handleStatusChange(status: ConnectionStatus): void {
     console.log('[MCP Extension] Status changed:', status);
     this.connectionStatus = status;
-
-    const button = document.getElementById('mcp-toggle-button') as HTMLButtonElement;
-    if (button) {
-      this.updateButtonState(button);
-    }
+    this.sidebar.updateConnectionStatus(status);
+    this.updateButtonState();
   }
 
   /**
@@ -650,12 +563,7 @@ class ChatGPTMCPExtension {
     console.log(`[MCP Extension] Tools updated: ${payload.tools.length} tools`);
     this.availableTools = payload.tools;
     this.modal.updateTools(this.availableTools);
-
-    // Update sidebar if open
-    if (this.sidebarOpen) {
-      this.hideToolsSidebar();
-      this.showToolsSidebar();
-    }
+    this.sidebar.updateTools(this.availableTools);
   }
 }
 

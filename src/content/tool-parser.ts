@@ -30,24 +30,32 @@ export class ToolCallParser {
     const toolCalls: DetectedToolCall[] = [];
     const functionCallsRegex = /<function_calls>([\s\S]*?)<\/function_calls>/g;
     // Updated regex to handle optional call_id and other attributes
-    const invokeRegex = /<invoke name="([^"]+)"[^>]*>([\s\S]*?)<\/invoke>/g;
-    const parameterRegex = /<parameter name="([^"]+)">([^<]*)<\/parameter>/g;
+    const invokeRegex = /<invoke\s+name="([^"]+)"[^>]*?>([\s\S]*?)<\/invoke>/gs;
+    // Updated to handle CDATA sections and multiline content
+    const parameterRegex = /<parameter\s+name="([^"]+)">([\s\S]*?)<\/parameter>/gs;
 
     const functionCallsMatches = text.matchAll(functionCallsRegex);
 
     for (const match of functionCallsMatches) {
       const functionCallsContent = match[1];
-      const invokeMatches = functionCallsContent.matchAll(invokeRegex);
+      const invokeMatches = Array.from(functionCallsContent.matchAll(invokeRegex));
 
       for (const invokeMatch of invokeMatches) {
         const toolName = invokeMatch[1];
         const parametersContent = invokeMatch[2];
         const args: Record<string, any> = {};
 
-        const paramMatches = parametersContent.matchAll(parameterRegex);
+        const paramMatches = Array.from(parametersContent.matchAll(parameterRegex));
         for (const paramMatch of paramMatches) {
           const paramName = paramMatch[1];
-          const paramValue = paramMatch[2].trim();
+          let paramValue = paramMatch[2].trim();
+
+          // Handle CDATA sections
+          const cdataMatch = paramValue.match(/^<!\[CDATA\[([\s\S]*?)\]\]>$/);
+          if (cdataMatch) {
+            paramValue = cdataMatch[1].trim();
+          }
+
           args[paramName] = this.parseValue(paramValue);
         }
 

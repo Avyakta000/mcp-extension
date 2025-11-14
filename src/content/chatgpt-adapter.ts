@@ -428,6 +428,49 @@ export class ChatGPTAdapter {
   }
 
   /**
+   * Attach a file to ChatGPT input
+   */
+  async attachFile(file: File): Promise<boolean> {
+    try {
+      const input = this.getChatInput();
+      if (!input) {
+        console.error('[ChatGPT] Could not find input element for file attachment');
+        return false;
+      }
+
+      // Create a DataTransfer object
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+
+      // Create custom events
+      const dragOverEvent = new DragEvent('dragover', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: dataTransfer,
+      });
+
+      const dropEvent = new DragEvent('drop', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: dataTransfer,
+      });
+
+      // Prevent default on dragover to enable drop
+      input.addEventListener('dragover', e => e.preventDefault(), { once: true });
+      input.dispatchEvent(dragOverEvent);
+
+      // Simulate the drop event
+      input.dispatchEvent(dropEvent);
+
+      console.log(`[ChatGPT] Attached file ${file.name} to input`);
+      return true;
+    } catch (error) {
+      console.error('[ChatGPT] Failed to attach file:', error);
+      return false;
+    }
+  }
+
+  /**
    * Sleep utility
    */
   private sleep(ms: number): Promise<void> {
