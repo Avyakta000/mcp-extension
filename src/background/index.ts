@@ -246,24 +246,41 @@ async function handleCallTool(
   }
 }
 
-// Auto-connect on extension startup
-chrome.runtime.onStartup.addListener(async () => {
-  console.log('[Background] Extension started, auto-connecting to MCP...');
+// Auto-connect function
+async function autoConnect(): Promise<void> {
+  console.log('[Background] Auto-connecting to MCP...');
   const client = initializeMCPClient();
   const config = await getSavedConfig();
-  client.connect(config).catch(error => {
+
+  try {
+    await client.connect(config);
+    console.log('[Background] Auto-connect successful');
+  } catch (error) {
     console.error('[Background] Auto-connect failed:', error);
-  });
+  }
+}
+
+// Auto-connect on extension startup
+chrome.runtime.onStartup.addListener(async () => {
+  console.log('[Background] Extension started');
+  await autoConnect();
 });
 
 // Auto-connect when extension is installed
 chrome.runtime.onInstalled.addListener(async () => {
-  console.log('[Background] Extension installed, auto-connecting to MCP...');
-  const client = initializeMCPClient();
-  const config = await getSavedConfig();
-  client.connect(config).catch(error => {
-    console.error('[Background] Auto-connect failed:', error);
-  });
+  console.log('[Background] Extension installed');
+  await autoConnect();
 });
 
+// Periodic connection check (every 30 seconds)
+setInterval(async () => {
+  const client = mcpClient;
+  if (!client || !client.isConnected()) {
+    console.log('[Background] Periodic check: Not connected, attempting auto-connect...');
+    await autoConnect();
+  }
+}, 30000);
+
+// Auto-connect immediately when background script loads
 console.log('[Background] Service worker loaded');
+autoConnect();

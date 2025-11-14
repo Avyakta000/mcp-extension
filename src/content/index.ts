@@ -21,6 +21,8 @@ class ChatGPTMCPExtension {
     instructions: ''
   };
   private mcpButton: HTMLButtonElement | null = null;
+  private lastUrl: string = '';
+  private urlCheckInterval: number | null = null;
 
   constructor() {
     this.adapter = new ChatGPTAdapter();
@@ -52,7 +54,9 @@ class ChatGPTMCPExtension {
     // Wait for ChatGPT to be ready
     const isReady = await this.adapter.waitForReady();
     if (!isReady) {
-      console.error('[MCP Extension] ChatGPT interface not ready');
+      console.error('[MCP Extension] ChatGPT interface not ready, retrying...');
+      // Retry after a delay
+      setTimeout(() => this.initialize(), 2000);
       return;
     }
 
@@ -69,6 +73,9 @@ class ChatGPTMCPExtension {
 
     // Start monitoring for tool calls
     this.startMonitoring();
+
+    // Start monitoring URL changes (for new chats)
+    this.startUrlMonitoring();
 
     // Listen to messages from background
     this.setupMessageListener();
@@ -109,6 +116,8 @@ class ChatGPTMCPExtension {
 
       if (statusResponse.success) {
         this.connectionStatus = statusResponse.data;
+        this.sidebar.updateConnectionStatus(this.connectionStatus);
+        this.updateButtonState();
         console.log('[MCP Extension] Connection status:', this.connectionStatus);
       }
 
@@ -121,6 +130,8 @@ class ChatGPTMCPExtension {
 
         if (connectResponse.success) {
           this.connectionStatus = connectResponse.data;
+          this.sidebar.updateConnectionStatus(this.connectionStatus);
+          this.updateButtonState();
           console.log('[MCP Extension] Auto-connect successful:', this.connectionStatus);
         } else {
           console.warn('[MCP Extension] Auto-connect failed:', connectResponse.error);
@@ -564,6 +575,28 @@ class ChatGPTMCPExtension {
     this.availableTools = payload.tools;
     this.modal.updateTools(this.availableTools);
     this.sidebar.updateTools(this.availableTools);
+  }
+
+  /**
+   * Start monitoring URL changes to detect new chats
+   */
+  private startUrlMonitoring(): void {
+    this.lastUrl = window.location.href;
+
+    this.urlCheckInterval = window.setInterval(() => {
+      const currentUrl = window.location.href;
+      if (currentUrl !== this.lastUrl) {
+        console.log('[MCP Extension] URL changed:', currentUrl);
+        this.lastUrl = currentUrl;
+
+        // Recreate button after URL change with delay for page to settle
+        setTimeout(() => {
+          this.createMCPButton();
+        }, 1500);
+      }
+    }, 1000);
+
+    console.log('[MCP Extension] URL monitoring started');
   }
 }
 

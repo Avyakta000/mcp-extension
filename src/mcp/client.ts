@@ -64,16 +64,20 @@ export class MCPClient extends EventEmitter {
       // Connect client to transport
       await this.client.connect(this.transport);
 
-      console.log('[MCP Client] Connected successfully');
+      console.log('[MCP Client] ✅ Connected successfully to', request.uri);
+      console.log('[MCP Client] Transport:', request.type);
 
       // Fetch available tools
       await this.fetchTools();
+
+      console.log(`[MCP Client] ✅ Fetched ${this.tools.length} tools`);
+      console.log('[MCP Client] Available tools:', this.tools.map(t => t.name).join(', '));
 
       this.reconnectAttempts = 0;
       this.isInitialized = true;
       this.emit('connected', { type: request.type, uri: request.uri });
     } catch (error) {
-      console.error('[MCP Client] Connection failed:', error);
+      console.error('[MCP Client] ❌ Connection failed:', error);
       this.emit('error', error);
       throw error;
     }

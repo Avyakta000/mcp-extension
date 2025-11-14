@@ -291,16 +291,31 @@ export class ChatGPTAdapter {
   /**
    * Wait for ChatGPT to be ready
    */
-  async waitForReady(timeout: number = this.config.timeouts.domReady): Promise<boolean> {
+  async waitForReady(timeout: number = 10000): Promise<boolean> {
     const startTime = Date.now();
+    let attempts = 0;
+
+    console.log('[ChatGPT Adapter] Waiting for ChatGPT to be ready...');
 
     while (Date.now() - startTime < timeout) {
+      attempts++;
+
       if (this.isChatGPTReady()) {
+        console.log(`[ChatGPT Adapter] ChatGPT ready after ${attempts} attempts (${Date.now() - startTime}ms)`);
         return true;
       }
-      await this.sleep(100);
+
+      // Log every 10 attempts
+      if (attempts % 10 === 0) {
+        const input = this.getChatInput();
+        const button = this.getSendButton();
+        console.log(`[ChatGPT Adapter] Still waiting... (attempt ${attempts}) - Input: ${!!input}, Button: ${!!button}`);
+      }
+
+      await this.sleep(200);
     }
 
+    console.error(`[ChatGPT Adapter] Timeout after ${attempts} attempts (${timeout}ms)`);
     return false;
   }
 
@@ -328,18 +343,28 @@ export class ChatGPTAdapter {
   createMCPButton(onClick: () => void): HTMLButtonElement | null {
     console.log('[ChatGPT Adapter] Creating MCP button...');
 
-    // Check if button already exists
+    // Check if button already exists AND is still in the DOM
     const existingButton = document.getElementById('mcp-toggle-button');
-    if (existingButton) {
-      console.log('[ChatGPT Adapter] MCP button already exists');
+    if (existingButton && document.body.contains(existingButton)) {
+      console.log('[ChatGPT Adapter] MCP button already exists in DOM');
       return existingButton as HTMLButtonElement;
+    } else if (existingButton) {
+      console.log('[ChatGPT Adapter] Found detached button, removing...');
+      existingButton.remove();
     }
 
     const insertionPoint = this.getButtonInsertionPoint();
     if (!insertionPoint) {
-      console.error('[ChatGPT Adapter] Button insertion point not found, trying fallback...');
+      console.error('[ChatGPT Adapter] Button insertion point not found');
+      console.log('[ChatGPT Adapter] Dumping available form structure:');
+      const forms = document.querySelectorAll('form');
+      forms.forEach((form, index) => {
+        console.log(`[ChatGPT Adapter] Form ${index}:`, form.outerHTML.substring(0, 200));
+      });
       return this.createMCPButtonFallback(onClick);
     }
+
+    console.log('[ChatGPT Adapter] Found insertion point:', insertionPoint.className);
 
     // Create button matching ChatGPT's style
     const button = document.createElement('button');
@@ -372,7 +397,7 @@ export class ChatGPTAdapter {
 
     // Insert button at the beginning (leftmost position in the group)
     insertionPoint.insertBefore(button, insertionPoint.firstChild);
-    console.log('[ChatGPT Adapter] MCP button created and inserted');
+    console.log('[ChatGPT Adapter] ✅ MCP button created and inserted successfully');
 
     return button;
   }

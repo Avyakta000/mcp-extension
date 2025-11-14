@@ -60,6 +60,31 @@ export class ToolExecutor {
 
     this.executingTools.add(toolCall.id);
 
+    // Check connection status first
+    try {
+      const statusResponse = await chrome.runtime.sendMessage({
+        type: MessageType.MCP_GET_STATUS
+      });
+
+      if (!statusResponse.success || !statusResponse.data?.isConnected) {
+        this.displayAutoExecuteError(
+          toolCall,
+          'MCP server not connected. Please check connection in settings.',
+          container
+        );
+        this.executingTools.delete(toolCall.id);
+        return;
+      }
+    } catch (error) {
+      this.displayAutoExecuteError(
+        toolCall,
+        'Unable to check connection status. Please reload the page.',
+        container
+      );
+      this.executingTools.delete(toolCall.id);
+      return;
+    }
+
     // Create a status indicator
     const statusDiv = document.createElement('div');
     statusDiv.style.cssText = `

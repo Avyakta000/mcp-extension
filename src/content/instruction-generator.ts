@@ -49,20 +49,16 @@ The instructions regarding 'call_id="$CALL_ID">
 - It is a unique identifier for the function call.
 - It is a number that is incremented by 1 for each new function call, starting from 1.
 
-You can invoke one or more functions by writing a "<function_calls>" block like the following as part of your reply to the user, MAKE SURE TO INVOKE ONLY ONE FUNCTION AT A TIME, meaning only one 'function_calls' tag in your output :
+When you need to call a tool, you MUST:
+1. Choose ONE tool from the AVAILABLE TOOLS list below
+2. Look at that tool's parameters (name, type, required/optional)
+3. Create a function_calls XML block with:
+   - invoke tag with name attribute = the exact tool name from the list
+   - call_id attribute starting at "1" and incrementing
+   - parameter tags for each required parameter (and optional ones if needed)
+   - parameter values based on the user's request
 
-<example_function_call>
-### Add New Line Here
-\`\`\`xml
-<function_calls>
-<invoke name="$FUNCTION_NAME" call_id="$CALL_ID">
-<parameter name="$PARAMETER_NAME_1">$PARAMETER_VALUE</parameter>
-<parameter name="$PARAMETER_NAME_2">$PARAMETER_VALUE</parameter>
-...
-</invoke>
-</function_calls>
-\`\`\`
-</example_function_call>
+MAKE SURE TO INVOKE ONLY ONE FUNCTION AT A TIME.
 
 String and scalar parameters should be specified as is, while lists and objects should use JSON format. Note that spaces for string values are not stripped. The output is not expected to be valid XML and is parsed with regular expressions.
 
@@ -81,23 +77,14 @@ Answer the user's request using the relevant tool(s), if they are available. Che
 
 <response_format>
 
-<thoughts optional="true">
-User is asking...
-My Thoughts ...
-Observations made ...
-Solutions i plan to use ...
-Best function for this task ... with call id call_id to be used $CALL_ID + 1 = $CALL_ID
-</thoughts>
+Before calling a function:
+1. Choose the appropriate tool from the AVAILABLE TOOLS list below
+2. Identify the required parameters for that tool
+3. Format your function call using the exact tool name and parameter names
 
-\`\`\`xml
-<function_calls>
-<invoke name="$FUNCTION_NAME" call_id="$CALL_ID">
-<parameter name="$PARAMETER_NAME_1">$PARAMETER_VALUE</parameter>
-<parameter name="$PARAMETER_NAME_2">$PARAMETER_VALUE</parameter>
-...
-</invoke>
-</function_calls>
-\`\`\`
+The response format is:
+- Optional brief explanation of your reasoning
+- Then the XML function call block with the ACTUAL tool name from the list below
 
 </response_format>
 
