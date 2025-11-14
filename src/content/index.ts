@@ -354,23 +354,26 @@ class ChatGPTMCPExtension {
    * Scan for tool calls in code blocks
    */
   private scanForToolCalls(): void {
-    // Look specifically for code blocks that might contain function_calls
-    const codeBlocks = document.querySelectorAll('pre code, pre, code');
+    // Look for <pre> blocks only (avoids processing both <pre> and <code> child)
+    const preBlocks = document.querySelectorAll('pre');
 
-    codeBlocks.forEach((block: Element) => {
-      const codeElement = block as HTMLElement;
+    preBlocks.forEach((block: Element) => {
+      const preElement = block as HTMLElement;
 
       // Skip if already processed
-      if (this.processedElements.has(codeElement)) {
+      if (this.processedElements.has(preElement)) {
         return;
       }
 
-      const text = codeElement.textContent || '';
+      let text = preElement.textContent || '';
 
       // Must contain function_calls pattern
       if (!text.includes('<function_calls>') && !text.includes('<invoke')) {
         return;
       }
+
+      // Clean the text: remove language tags and "Copy code" button text
+      text = this.cleanCodeBlockText(text);
 
       console.log('[MCP Extension] Found code block with tool calls:', text.substring(0, 150));
 
@@ -381,17 +384,39 @@ class ChatGPTMCPExtension {
         console.log(`[MCP Extension] Parsed ${toolCalls.length} tool call(s):`, toolCalls);
 
         // Mark as processed FIRST to prevent duplicate processing
-        this.processedElements.add(codeElement);
+        this.processedElements.add(preElement);
+
+        // Also mark any child code elements to prevent double processing
+        const codeChild = preElement.querySelector('code');
+        if (codeChild) {
+          this.processedElements.add(codeChild as HTMLElement);
+        }
 
         // Hide the XML code block
-        this.hideXMLCodeBlock(codeElement);
+        this.hideXMLCodeBlock(preElement);
 
-        // Inject UI for each tool call
+        // Inject UI for each tool call (but only once!)
         toolCalls.forEach(toolCall => {
-          this.injectExecutionUIAfterCodeBlock(toolCall, codeElement);
+          this.injectExecutionUIAfterCodeBlock(toolCall, preElement);
         });
       }
     });
+  }
+
+  /**
+   * Clean code block text by removing language tags and UI elements
+   */
+  private cleanCodeBlockText(text: string): string {
+    // Remove common language tags at the start (xml, json, javascript, etc.)
+    text = text.replace(/^(xml|json|javascript|typescript|python|java|rust|go|bash|shell|sh)\s*/i, '');
+
+    // Remove "Copy code" button text that ChatGPT adds
+    text = text.replace(/Copy code\s*/gi, '');
+
+    // Remove any leading/trailing whitespace
+    text = text.trim();
+
+    return text;
   }
 
   /**
@@ -455,88 +480,207 @@ class ChatGPTMCPExtension {
   }
 
   /**
-   * Inject execution UI for a tool call
+   * Inject execution UI for a tool call (MCP-SuperAssistant style)
    */
   private async injectExecutionUI(toolCall: DetectedToolCall, messageElement: HTMLElement): Promise<void> {
-    // Create container for tool UI
+    // Create main container
     const container = document.createElement('div');
     container.className = 'mcp-tool-call';
     container.style.cssText = `
-      margin: 12px 0;
-      padding: 12px;
-      background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-      border-left: 3px solid #667eea;
-      border-radius: 6px;
+      margin: 16px 0;
+      padding: 16px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #e5e5e5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     `;
 
-    // Tool name header
+    // Function name header (large, prominent)
     const header = document.createElement('div');
     header.style.cssText = `
+      font-size: 18px;
       font-weight: 600;
-      font-size: 14px;
-      color: #667eea;
-      margin-bottom: 8px;
+      color: #3b82f6;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     `;
-    header.textContent = `🔧 Tool Call: ${toolCall.toolName}`;
+    header.innerHTML = `
+      <span>${toolCall.toolName}</span>
+      <button class="expand-btn" style="
+        background: transparent;
+        border: none;
+        color: #888;
+        cursor: pointer;
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background 0.2s;
+      ">▼</button>
+    `;
 
     container.appendChild(header);
 
-    // Arguments display
+    // Description (if available, extract from tool definition)
+    const description = document.createElement('div');
+    description.style.cssText = `
+      font-size: 13px;
+      color: #999;
+      margin-bottom: 12px;
+    `;
+    description.textContent = 'Tool execution';
+    container.appendChild(description);
+
+    // Expandable parameters section (collapsed by default)
+    const expandableSection = document.createElement('div');
+    expandableSection.className = 'expandable-section';
+    expandableSection.style.cssText = `
+      display: none;
+      margin: 12px 0;
+      padding: 12px;
+      background: #252525;
+      border-radius: 6px;
+      border: 1px solid #333;
+    `;
+
+    // Parameters display
     if (toolCall.arguments && Object.keys(toolCall.arguments).length > 0) {
-      const argsDisplay = this.executor.createArgumentsDisplay(toolCall);
-      container.appendChild(argsDisplay);
+      Object.entries(toolCall.arguments).forEach(([key, value]) => {
+        const paramRow = document.createElement('div');
+        paramRow.style.cssText = `
+          margin-bottom: 12px;
+        `;
+
+        const paramName = document.createElement('div');
+        paramName.style.cssText = `
+          font-size: 14px;
+          font-weight: 600;
+          color: #e5e5e5;
+          margin-bottom: 6px;
+        `;
+        paramName.textContent = key;
+
+        const paramValue = document.createElement('pre');
+        paramValue.style.cssText = `
+          margin: 0;
+          padding: 12px;
+          background: #1a1a1a;
+          border: 1px solid #333;
+          border-radius: 4px;
+          color: #e5e5e5;
+          font-size: 13px;
+          font-family: 'Consolas', 'Monaco', monospace;
+          overflow-x: auto;
+          white-space: pre-wrap;
+          word-wrap: break-word;
+        `;
+        paramValue.textContent = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
+
+        paramRow.appendChild(paramName);
+        paramRow.appendChild(paramValue);
+        expandableSection.appendChild(paramRow);
+      });
     }
 
-    // Execute button or auto-execute indicator
-    if (this.mcpSettings.autoExecute && this.mcpSettings.enabled && this.connectionStatus.isConnected) {
-      // Auto-execute mode - only if connected
-      const autoExecuteIndicator = document.createElement('div');
-      autoExecuteIndicator.style.cssText = `
-        padding: 8px 12px;
-        background: #dbeafe;
-        border-radius: 6px;
-        font-size: 13px;
-        color: #1e40af;
-        margin-top: 8px;
-      `;
-      autoExecuteIndicator.textContent = '⚡ Auto-executing...';
-      container.appendChild(autoExecuteIndicator);
+    container.appendChild(expandableSection);
 
-      // Append to message first
-      messageElement.appendChild(container);
+    // Buttons container
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.style.cssText = `
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+    `;
+
+    // Hide Raw Info button (toggles expandable section)
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'toggle-raw-btn';
+    toggleBtn.style.cssText = `
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid #444;
+      border-radius: 6px;
+      color: #e5e5e5;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    `;
+    toggleBtn.innerHTML = '<span>⌄</span> Hide Raw Info';
+    toggleBtn.onclick = () => {
+      const isVisible = expandableSection.style.display !== 'none';
+      expandableSection.style.display = isVisible ? 'none' : 'block';
+      toggleBtn.innerHTML = isVisible ? '<span>›</span> Show Raw Info' : '<span>⌄</span> Hide Raw Info';
+
+      // Also update header expand button
+      const expandBtn = header.querySelector('.expand-btn');
+      if (expandBtn) {
+        expandBtn.textContent = isVisible ? '▶' : '▼';
+      }
+    };
+    buttonsContainer.appendChild(toggleBtn);
+
+    // Run/Execute button
+    const runBtn = document.createElement('button');
+    runBtn.className = 'run-btn';
+    runBtn.style.cssText = `
+      padding: 8px 16px;
+      background: #3b82f6;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    `;
+    runBtn.innerHTML = '▶ Run';
+    runBtn.onmouseover = () => {
+      runBtn.style.background = '#2563eb';
+    };
+    runBtn.onmouseout = () => {
+      runBtn.style.background = '#3b82f6';
+    };
+
+    buttonsContainer.appendChild(runBtn);
+    container.appendChild(buttonsContainer);
+
+    // Append to message
+    messageElement.appendChild(container);
+
+    // Wire up expand button in header
+    const expandBtn = header.querySelector('.expand-btn');
+    if (expandBtn) {
+      expandBtn.addEventListener('click', () => {
+        toggleBtn.click();
+      });
+    }
+
+    // Handle auto-execute or manual execute
+    if (this.mcpSettings.autoExecute && this.mcpSettings.enabled && this.connectionStatus.isConnected) {
+      // Auto-execute mode
+      runBtn.textContent = '⚡ Auto-executing...';
+      runBtn.disabled = true;
+      runBtn.style.opacity = '0.7';
 
       // Execute automatically
       await this.executor.executeToolInContainer(toolCall, container);
-    } else if (this.mcpSettings.autoExecute && this.mcpSettings.enabled && !this.connectionStatus.isConnected) {
-      // Auto-execute enabled but not connected
-      const warningDiv = document.createElement('div');
-      warningDiv.style.cssText = `
-        padding: 8px 12px;
-        background: #fef3c7;
-        border-radius: 6px;
-        font-size: 13px;
-        color: #92400e;
-        margin-top: 8px;
-      `;
-      warningDiv.innerHTML = `
-        <div style="font-weight: 600; margin-bottom: 4px;">⚠️ Not Connected</div>
-        <div>MCP server is not connected. Click execute manually or check connection.</div>
-      `;
-      container.appendChild(warningDiv);
-
-      // Also add manual execute button
-      const executeBtn = this.executor.createExecutionButton(toolCall, container);
-      container.appendChild(executeBtn);
-
-      // Append to message
-      messageElement.appendChild(container);
     } else {
       // Manual execute mode
-      const executeBtn = this.executor.createExecutionButton(toolCall, container);
-      container.appendChild(executeBtn);
+      runBtn.onclick = async () => {
+        runBtn.textContent = '⏳ Executing...';
+        runBtn.disabled = true;
+        runBtn.style.opacity = '0.7';
 
-      // Append to message
-      messageElement.appendChild(container);
+        await this.executor.executeToolInContainer(toolCall, container);
+      };
     }
   }
 
