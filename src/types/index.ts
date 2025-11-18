@@ -21,6 +21,8 @@ export interface ConnectionStatus {
   transport?: TransportType;
   uri?: string;
   error?: string;
+  connectedAt?: number;
+  lastReconnectedAt?: number;
 }
 
 export interface ToolCallRequest {

@@ -23,7 +23,7 @@ export class ToolExecutor {
       padding: 6px 12px;
       margin: 8px 0;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+      color: #000000;
       border: none;
       border-radius: 6px;
       font-size: 13px;
@@ -60,6 +60,9 @@ export class ToolExecutor {
 
     this.executingTools.add(toolCall.id);
 
+    // Find the run button to update its state
+    const runBtn = container.querySelector('.run-btn') as HTMLButtonElement;
+
     // Check connection status first
     try {
       const statusResponse = await chrome.runtime.sendMessage({
@@ -72,6 +75,7 @@ export class ToolExecutor {
           'MCP server not connected. Please check connection in settings.',
           container
         );
+        this.resetButtonState(runBtn);
         this.executingTools.delete(toolCall.id);
         return;
       }
@@ -81,6 +85,7 @@ export class ToolExecutor {
         'Unable to check connection status. Please reload the page.',
         container
       );
+      this.resetButtonState(runBtn);
       this.executingTools.delete(toolCall.id);
       return;
     }
@@ -119,16 +124,50 @@ export class ToolExecutor {
       statusDiv.remove();
 
       if (response.success) {
-        this.displayAutoExecuteSuccess(toolCall, response.data, container);
+        // Check if the result contains an error message
+        const resultText = this.formatToolResult(response.data);
+        const isError = resultText.toLowerCase().includes('error:') ||
+                       resultText.toLowerCase().includes('"error"') ||
+                       resultText.toLowerCase().includes('invalid') ||
+                       (response.data?.isError === true);
+
+        if (isError) {
+          this.displayAutoExecuteError(toolCall, resultText, container);
+        } else {
+          this.displayAutoExecuteSuccess(toolCall, response.data, container);
+        }
       } else {
         this.displayAutoExecuteError(toolCall, response.error || 'Unknown error', container);
       }
+
+      // Reset button state after execution
+      this.resetButtonState(runBtn);
     } catch (error: any) {
       statusDiv.remove();
       this.displayAutoExecuteError(toolCall, error.message || 'Execution failed', container);
+      // Reset button state after error
+      this.resetButtonState(runBtn);
     } finally {
       this.executingTools.delete(toolCall.id);
     }
+  }
+
+  /**
+   * Reset button state after execution
+   */
+  private resetButtonState(button: HTMLButtonElement | null): void {
+    if (!button) return;
+
+    button.disabled = false;
+    button.style.opacity = '1';
+    button.innerHTML = '✓ Completed';
+    button.style.background = '#ffffff';
+
+    // Reset to original state after a delay
+    setTimeout(() => {
+      button.innerHTML = '▶ Run';
+      button.style.background = '#ffffff';
+    }, 2000);
   }
 
   /**
@@ -183,8 +222,8 @@ export class ToolExecutor {
     resultDiv.style.cssText = `
       margin: 12px 0;
       padding: 12px;
-      background: rgba(16, 185, 129, 0.1);
-      border-left: 3px solid #10b981;
+      background: #0a0a0a;
+      border-left: 3px solid #ffffff;
       border-radius: 4px;
       font-size: 13px;
       line-height: 1.5;
@@ -193,14 +232,83 @@ export class ToolExecutor {
     // Format result content
     const content = this.formatToolResult(result);
     resultDiv.innerHTML = `
-      <div style="font-weight: 600; color: #10b981; margin-bottom: 8px;">
+      <div style="font-weight: 600; color: #ffffff; margin-bottom: 8px;">
         ✓ Auto-executed successfully
       </div>
-      <div style="color: #374151; white-space: pre-wrap; word-break: break-word;">
+      <div style="color: #cccccc; white-space: pre-wrap; word-break: break-word;">
         ${this.escapeHtml(content)}
       </div>
     `;
 
+    // Create buttons container
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.style.cssText = `
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    `;
+
+    // Add copy button
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = 'Copy Result';
+    copyBtn.style.cssText = `
+      padding: 6px 12px;
+      background: #ffffff;
+      color: #000000;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    `;
+    copyBtn.onmouseover = () => {
+      copyBtn.style.background = '#cccccc';
+    };
+    copyBtn.onmouseout = () => {
+      copyBtn.style.background = '#ffffff';
+    };
+    copyBtn.onclick = () => {
+      const wrappedContent = `<function_result call_id="${toolCall.id}">\n${content}\n</function_result>`;
+      this.adapter.appendText(wrappedContent);
+      copyBtn.textContent = '✓ Copied!';
+      setTimeout(() => {
+        copyBtn.textContent = 'Copy Result';
+      }, 1500);
+    };
+
+    // Add attach button
+    const attachBtn = document.createElement('button');
+    attachBtn.textContent = 'Attach to Input';
+    attachBtn.style.cssText = `
+      padding: 6px 12px;
+      background: #ffffff;
+      color: #000000;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    `;
+    attachBtn.onmouseover = () => {
+      attachBtn.style.background = '#cccccc';
+    };
+    attachBtn.onmouseout = () => {
+      attachBtn.style.background = '#ffffff';
+    };
+    attachBtn.onclick = () => {
+      const wrappedContent = `<function_result call_id="${toolCall.id}">\n${content}\n</function_result>`;
+      this.adapter.insertText(wrappedContent);
+      attachBtn.textContent = '✓ Attached!';
+      setTimeout(() => {
+        attachBtn.textContent = 'Attach to Input';
+      }, 1500);
+    };
+
+    buttonsContainer.appendChild(copyBtn);
+    buttonsContainer.appendChild(attachBtn);
+    resultDiv.appendChild(buttonsContainer);
     container.appendChild(resultDiv);
   }
 
@@ -214,22 +322,61 @@ export class ToolExecutor {
     errorDiv.style.cssText = `
       margin: 12px 0;
       padding: 12px;
-      background: rgba(239, 68, 68, 0.1);
-      border-left: 3px solid #ef4444;
+      background: #0a0a0a;
+      border-left: 3px solid #ffffff;
       border-radius: 4px;
       font-size: 13px;
       line-height: 1.5;
     `;
 
     errorDiv.innerHTML = `
-      <div style="font-weight: 600; color: #ef4444; margin-bottom: 8px;">
+      <div style="font-weight: 600; color: #ffffff; margin-bottom: 8px;">
         ✗ Auto-execute failed:
       </div>
-      <div style="color: #374151;">
+      <div style="color: #cccccc;">
         ${this.escapeHtml(error)}
       </div>
     `;
 
+    // Create buttons container
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.style.cssText = `
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    `;
+
+    // Add copy error button
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = 'Copy Error';
+    copyBtn.style.cssText = `
+      padding: 6px 12px;
+      background: #ffffff;
+      color: #000000;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    `;
+    copyBtn.onmouseover = () => {
+      copyBtn.style.background = '#cccccc';
+    };
+    copyBtn.onmouseout = () => {
+      copyBtn.style.background = '#ffffff';
+    };
+    copyBtn.onclick = () => {
+      const wrappedContent = `<function_result call_id="${toolCall.id}" status="error">\nError: ${error}\n</function_result>`;
+      this.adapter.appendText(wrappedContent);
+      copyBtn.textContent = '✓ Copied!';
+      setTimeout(() => {
+        copyBtn.textContent = 'Copy Error';
+      }, 1500);
+    };
+
+    buttonsContainer.appendChild(copyBtn);
+    errorDiv.appendChild(buttonsContainer);
     container.appendChild(errorDiv);
   }
 
@@ -253,8 +400,8 @@ export class ToolExecutor {
     resultDiv.style.cssText = `
       margin: 12px 0;
       padding: 12px;
-      background: rgba(16, 185, 129, 0.1);
-      border-left: 3px solid #10b981;
+      background: #0a0a0a;
+      border-left: 3px solid #ffffff;
       border-radius: 4px;
       font-size: 13px;
       line-height: 1.5;
@@ -263,32 +410,83 @@ export class ToolExecutor {
     // Format result content
     const content = this.formatToolResult(result);
     resultDiv.innerHTML = `
-      <div style="font-weight: 600; color: #10b981; margin-bottom: 8px;">
+      <div style="font-weight: 600; color: #ffffff; margin-bottom: 8px;">
         ✓ Result:
       </div>
-      <div style="color: #374151; white-space: pre-wrap; word-break: break-word;">
+      <div style="color: #cccccc; white-space: pre-wrap; word-break: break-word;">
         ${this.escapeHtml(content)}
       </div>
     `;
 
+    // Create buttons container
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.style.cssText = `
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    `;
+
     // Add copy button
     const copyBtn = document.createElement('button');
-    copyBtn.textContent = 'Copy to Input';
+    copyBtn.textContent = 'Copy Result';
     copyBtn.style.cssText = `
-      margin-top: 8px;
-      padding: 4px 8px;
-      background: #10b981;
-      color: white;
+      padding: 6px 12px;
+      background: #ffffff;
+      color: #000000;
       border: none;
       border-radius: 4px;
       font-size: 12px;
+      font-weight: 500;
       cursor: pointer;
+      transition: all 0.2s;
     `;
+    copyBtn.onmouseover = () => {
+      copyBtn.style.background = '#cccccc';
+    };
+    copyBtn.onmouseout = () => {
+      copyBtn.style.background = '#ffffff';
+    };
     copyBtn.onclick = () => {
-      this.adapter.appendText(`Tool Result (${toolCall.toolName}):\n${content}`);
+      const wrappedContent = `<function_result call_id="${toolCall.id}">\n${content}\n</function_result>`;
+      this.adapter.appendText(wrappedContent);
+      copyBtn.textContent = '✓ Copied!';
+      setTimeout(() => {
+        copyBtn.textContent = 'Copy Result';
+      }, 1500);
     };
 
-    resultDiv.appendChild(copyBtn);
+    // Add attach button
+    const attachBtn = document.createElement('button');
+    attachBtn.textContent = 'Attach to Input';
+    attachBtn.style.cssText = `
+      padding: 6px 12px;
+      background: #ffffff;
+      color: #000000;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    `;
+    attachBtn.onmouseover = () => {
+      attachBtn.style.background = '#cccccc';
+    };
+    attachBtn.onmouseout = () => {
+      attachBtn.style.background = '#ffffff';
+    };
+    attachBtn.onclick = () => {
+      const wrappedContent = `<function_result call_id="${toolCall.id}">\n${content}\n</function_result>`;
+      this.adapter.insertText(wrappedContent);
+      attachBtn.textContent = '✓ Attached!';
+      setTimeout(() => {
+        attachBtn.textContent = 'Attach to Input';
+      }, 1500);
+    };
+
+    buttonsContainer.appendChild(copyBtn);
+    buttonsContainer.appendChild(attachBtn);
+    resultDiv.appendChild(buttonsContainer);
     container.appendChild(resultDiv);
   }
 
@@ -312,22 +510,61 @@ export class ToolExecutor {
     errorDiv.style.cssText = `
       margin: 12px 0;
       padding: 12px;
-      background: rgba(239, 68, 68, 0.1);
-      border-left: 3px solid #ef4444;
+      background: #0a0a0a;
+      border-left: 3px solid #ffffff;
       border-radius: 4px;
       font-size: 13px;
       line-height: 1.5;
     `;
 
     errorDiv.innerHTML = `
-      <div style="font-weight: 600; color: #ef4444; margin-bottom: 8px;">
+      <div style="font-weight: 600; color: #ffffff; margin-bottom: 8px;">
         ✗ Error:
       </div>
-      <div style="color: #374151;">
+      <div style="color: #cccccc;">
         ${this.escapeHtml(error)}
       </div>
     `;
 
+    // Create buttons container
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.style.cssText = `
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    `;
+
+    // Add copy error button
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = 'Copy Error';
+    copyBtn.style.cssText = `
+      padding: 6px 12px;
+      background: #ffffff;
+      color: #000000;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    `;
+    copyBtn.onmouseover = () => {
+      copyBtn.style.background = '#cccccc';
+    };
+    copyBtn.onmouseout = () => {
+      copyBtn.style.background = '#ffffff';
+    };
+    copyBtn.onclick = () => {
+      const wrappedContent = `<function_result call_id="${toolCall.id}" status="error">\nError: ${error}\n</function_result>`;
+      this.adapter.appendText(wrappedContent);
+      copyBtn.textContent = '✓ Copied!';
+      setTimeout(() => {
+        copyBtn.textContent = 'Copy Error';
+      }, 1500);
+    };
+
+    buttonsContainer.appendChild(copyBtn);
+    errorDiv.appendChild(buttonsContainer);
     container.appendChild(errorDiv);
   }
 
@@ -377,8 +614,8 @@ export class ToolExecutor {
     argsDiv.style.cssText = `
       margin: 8px 0;
       padding: 8px;
-      background: rgba(59, 130, 246, 0.05);
-      border-left: 2px solid #3b82f6;
+      background: #0a0a0a;
+      border-left: 2px solid #ffffff;
       border-radius: 4px;
       font-size: 12px;
       font-family: 'Courier New', monospace;
@@ -386,10 +623,10 @@ export class ToolExecutor {
 
     const argsText = JSON.stringify(toolCall.arguments, null, 2);
     argsDiv.innerHTML = `
-      <div style="font-weight: 600; color: #3b82f6; margin-bottom: 4px;">
+      <div style="font-weight: 600; color: #ffffff; margin-bottom: 4px;">
         Arguments:
       </div>
-      <pre style="margin: 0; white-space: pre-wrap; word-break: break-word; color: #374151;">
+      <pre style="margin: 0; white-space: pre-wrap; word-break: break-word; color: #cccccc;">
 ${this.escapeHtml(argsText)}
       </pre>
     `;

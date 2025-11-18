@@ -189,4 +189,43 @@ export class ToolCallParser {
   private generateId(): string {
     return `tool-call-${Date.now()}-${this.idCounter++}`;
   }
+
+  /**
+   * Parse function results from message text
+   * Looks for <function_result call_id="..." status="...">content</function_result>
+   */
+  parseFunctionResults(text: string): Array<{
+    callId: string;
+    status: string;
+    content: string;
+    rawText: string;
+  }> {
+    const results: Array<{
+      callId: string;
+      status: string;
+      content: string;
+      rawText: string;
+    }> = [];
+
+    // Match function_result tags with optional status attribute
+    const resultRegex = /<function_result\s+call_id="([^"]+)"(?:\s+status="([^"]+)")?\s*>([\s\S]*?)<\/function_result>/g;
+
+    let match;
+    while ((match = resultRegex.exec(text)) !== null) {
+      const callId = match[1];
+      const status = match[2] || 'success';
+      const content = match[3].trim();
+
+      results.push({
+        callId,
+        status,
+        content,
+        rawText: match[0]
+      });
+
+      console.log('[Parser] ✅ Parsed function result:', { callId, status, contentLength: content.length });
+    }
+
+    return results;
+  }
 }

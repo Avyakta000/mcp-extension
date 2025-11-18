@@ -210,8 +210,9 @@ export class MCPSidebar {
       right: 0;
       width: ${this.currentWidth}px;
       height: 100vh;
-      background: white;
-      box-shadow: -2px 0 8px rgba(0,0,0,0.15);
+      background: #000000;
+      border-left: 1px solid #333333;
+      box-shadow: -4px 0 24px rgba(0,0,0,0.5);
       z-index: 10000;
       display: flex;
       flex-direction: column;
@@ -232,7 +233,7 @@ export class MCPSidebar {
       transition: background 0.2s;
     `;
     resizeHandle.onmouseenter = () => {
-      resizeHandle.style.background = 'rgba(102, 126, 234, 0.5)';
+      resizeHandle.style.background = 'rgba(255, 255, 255, 0.2)';
     };
     resizeHandle.onmouseleave = () => {
       if (!this.isResizing) {
@@ -277,18 +278,21 @@ export class MCPSidebar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px;
-      border-bottom: 2px solid #e5e7eb;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+      padding: 20px;
+      border-bottom: 1px solid #222222;
+      background: #000000;
+      color: #ffffff;
     `;
 
     const title = document.createElement('h2');
-    title.textContent = 'MCP Tools';
+    title.id = 'mcp-sidebar-title';
+    title.textContent = 'MCP TOOLS';
     title.style.cssText = `
       margin: 0;
-      font-size: 20px;
-      font-weight: 600;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #ffffff;
     `;
 
     const controls = document.createElement('div');
@@ -302,21 +306,25 @@ export class MCPSidebar {
     const minimizeBtn = document.createElement('button');
     minimizeBtn.innerHTML = this.isMinimized ? '→' : '←';
     minimizeBtn.style.cssText = `
-      background: rgba(255, 255, 255, 0.2);
-      border: none;
-      color: white;
+      background: transparent;
+      border: 1px solid #333333;
+      color: #ffffff;
       width: 32px;
       height: 32px;
-      border-radius: 6px;
+      border-radius: 4px;
       cursor: pointer;
       font-size: 16px;
-      transition: background 0.2s;
+      transition: all 0.2s;
     `;
     minimizeBtn.onmouseenter = () => {
-      minimizeBtn.style.background = 'rgba(255, 255, 255, 0.3)';
+      minimizeBtn.style.background = '#ffffff';
+      minimizeBtn.style.color = '#000000';
+      minimizeBtn.style.borderColor = '#ffffff';
     };
     minimizeBtn.onmouseleave = () => {
-      minimizeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+      minimizeBtn.style.background = 'transparent';
+      minimizeBtn.style.color = '#ffffff';
+      minimizeBtn.style.borderColor = '#333333';
     };
     minimizeBtn.onclick = () => this.toggleMinimize();
 
@@ -324,21 +332,25 @@ export class MCPSidebar {
     const closeBtn = document.createElement('button');
     closeBtn.textContent = '✕';
     closeBtn.style.cssText = `
-      background: rgba(255, 255, 255, 0.2);
-      border: none;
-      color: white;
+      background: transparent;
+      border: 1px solid #333333;
+      color: #ffffff;
       width: 32px;
       height: 32px;
-      border-radius: 6px;
+      border-radius: 4px;
       cursor: pointer;
       font-size: 18px;
-      transition: background 0.2s;
+      transition: all 0.2s;
     `;
     closeBtn.onmouseenter = () => {
-      closeBtn.style.background = 'rgba(255, 255, 255, 0.3)';
+      closeBtn.style.background = '#ffffff';
+      closeBtn.style.color = '#000000';
+      closeBtn.style.borderColor = '#ffffff';
     };
     closeBtn.onmouseleave = () => {
-      closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+      closeBtn.style.background = 'transparent';
+      closeBtn.style.color = '#ffffff';
+      closeBtn.style.borderColor = '#333333';
     };
     closeBtn.onclick = () => this.hide();
 
@@ -356,32 +368,33 @@ export class MCPSidebar {
    */
   private createTabNav(): HTMLElement {
     const nav = document.createElement('div');
+    nav.id = 'mcp-sidebar-tabnav';
     nav.style.cssText = `
       display: flex;
-      border-bottom: 1px solid #e5e7eb;
-      background: #f9fafb;
+      border-bottom: 1px solid #222222;
+      background: #000000;
     `;
 
     const tabs = [
-      { id: 'tools' as const, label: 'Tools', icon: '🔧' },
-      { id: 'instructions' as const, label: 'Instructions', icon: '📘' },
-      { id: 'settings' as const, label: 'Settings', icon: '⚙️' },
-      { id: 'connection' as const, label: 'Connection', icon: '🔌' }
+      { id: 'tools' as const, label: 'TOOLS' },
+      { id: 'instructions' as const, label: 'INSTRUCTIONS' },
+      { id: 'settings' as const, label: 'SETTINGS' }
     ];
 
     tabs.forEach(tab => {
       const button = document.createElement('button');
-      button.textContent = `${tab.icon} ${tab.label}`;
+      button.textContent = tab.label;
       button.style.cssText = `
         flex: 1;
-        padding: 12px;
+        padding: 14px;
         border: none;
-        background: ${this.currentTab === tab.id ? 'white' : 'transparent'};
-        border-bottom: 2px solid ${this.currentTab === tab.id ? '#667eea' : 'transparent'};
+        background: transparent;
+        border-bottom: 2px solid ${this.currentTab === tab.id ? '#ffffff' : 'transparent'};
         cursor: pointer;
-        font-size: 14px;
-        font-weight: ${this.currentTab === tab.id ? '600' : '400'};
-        color: ${this.currentTab === tab.id ? '#667eea' : '#6b7280'};
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        color: ${this.currentTab === tab.id ? '#ffffff' : '#666666'};
         transition: all 0.2s;
       `;
       button.onclick = () => {
@@ -390,14 +403,12 @@ export class MCPSidebar {
       };
 
       button.onmouseenter = () => {
-        if (this.currentTab !== tab.id) {
-          button.style.background = '#f3f4f6';
-        }
+        button.style.color = '#ffffff';
       };
 
       button.onmouseleave = () => {
         if (this.currentTab !== tab.id) {
-          button.style.background = 'transparent';
+          button.style.color = '#666666';
         }
       };
 
@@ -430,9 +441,6 @@ export class MCPSidebar {
       case 'settings':
         this.renderSettingsTab(content);
         break;
-      case 'connection':
-        this.renderConnectionTab(content);
-        break;
     }
   }
 
@@ -448,14 +456,14 @@ export class MCPSidebar {
       align-items: center;
       margin-bottom: 16px;
       padding-bottom: 12px;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid #222222;
     `;
 
     const count = document.createElement('div');
     count.textContent = `${this.selectedTools.size} / ${this.tools.length} selected`;
     count.style.cssText = `
       font-size: 14px;
-      color: #6b7280;
+      color: #999999;
       font-weight: 500;
     `;
 
@@ -463,19 +471,22 @@ export class MCPSidebar {
     selectAllBtn.textContent = this.selectedTools.size === this.tools.length ? 'Deselect All' : 'Select All';
     selectAllBtn.style.cssText = `
       padding: 6px 12px;
-      background: #667eea;
-      color: white;
-      border: none;
+      background: #ffffff;
+      color: #000000;
+      border: 1px solid #000000;
       border-radius: 6px;
       font-size: 13px;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s;
+      font-weight: 500;
     `;
     selectAllBtn.onmouseenter = () => {
-      selectAllBtn.style.background = '#5568d3';
+      selectAllBtn.style.background = '#000000';
+      selectAllBtn.style.color = '#ffffff';
     };
     selectAllBtn.onmouseleave = () => {
-      selectAllBtn.style.background = '#667eea';
+      selectAllBtn.style.background = '#ffffff';
+      selectAllBtn.style.color = '#000000';
     };
     selectAllBtn.onclick = () => {
       if (this.selectedTools.size === this.tools.length) {
@@ -506,7 +517,7 @@ export class MCPSidebar {
       empty.style.cssText = `
         text-align: center;
         padding: 32px 16px;
-        color: #9ca3af;
+        color: #666666;
         font-size: 14px;
       `;
       container.appendChild(empty);
@@ -540,12 +551,12 @@ export class MCPSidebar {
 
     const statusCard = document.createElement('div');
     statusCard.style.cssText = `
-      background: #eef2ff;
-      border: 1px solid #c7d2fe;
+      background: #1a1a1a;
+      border: 1px solid #333333;
       border-radius: 8px;
       padding: 12px;
       margin-bottom: 16px;
-      color: #4338ca;
+      color: #ffffff;
       font-size: 13px;
       line-height: 1.5;
     `;
@@ -566,17 +577,23 @@ export class MCPSidebar {
     copyButton.style.cssText = `
       flex: 1;
       padding: 10px 14px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
+      background: #ffffff;
+      color: #000000;
+      border: 1px solid #000000;
       border-radius: 6px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      transition: opacity 0.2s;
+      transition: all 0.2s;
     `;
-    copyButton.onmouseenter = () => (copyButton.style.opacity = '0.85');
-    copyButton.onmouseleave = () => (copyButton.style.opacity = '1');
+    copyButton.onmouseenter = () => {
+      copyButton.style.background = '#000000';
+      copyButton.style.color = '#ffffff';
+    };
+    copyButton.onmouseleave = () => {
+      copyButton.style.background = '#ffffff';
+      copyButton.style.color = '#000000';
+    };
     copyButton.onclick = () => this.handleCopyInstructions(copyButton);
 
     const insertButton = document.createElement('button');
@@ -584,17 +601,21 @@ export class MCPSidebar {
     insertButton.style.cssText = `
       flex: 1;
       padding: 10px 14px;
-      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-      color: white;
-      border: none;
+      background: #000000;
+      color: #ffffff;
+      border: 1px solid #000000;
       border-radius: 6px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      transition: opacity 0.2s;
+      transition: all 0.2s;
     `;
-    insertButton.onmouseenter = () => (insertButton.style.opacity = '0.85');
-    insertButton.onmouseleave = () => (insertButton.style.opacity = '1');
+    insertButton.onmouseenter = () => {
+      insertButton.style.background = '#333333';
+    };
+    insertButton.onmouseleave = () => {
+      insertButton.style.background = '#000000';
+    };
     insertButton.onclick = () => this.handleInsertInstructions(insertButton);
 
     const disableActions = !this.instructions?.trim() || selectedCount === 0;
@@ -611,32 +632,57 @@ export class MCPSidebar {
     actionsRow.appendChild(insertButton);
     container.appendChild(actionsRow);
 
-    const infoText = document.createElement('div');
-    infoText.style.cssText = `
-      font-size: 12px;
-      color: #6b7280;
-      margin-bottom: 8px;
-      line-height: 1.5;
+    // Collapsible instructions section
+    const collapsibleHeader = document.createElement('div');
+    collapsibleHeader.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      background: #111111;
+      border: 1px solid #222222;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 0;
     `;
-    infoText.textContent = 'These instructions include the required XML function-call format and the selected tools with their schemas.';
-    container.appendChild(infoText);
+
+    const headerTitle = document.createElement('div');
+    headerTitle.style.cssText = `
+      font-size: 14px;
+      color: #ffffff;
+      font-weight: 600;
+    `;
+    headerTitle.textContent = '📄 Instructions Preview';
+
+    const headerIcon = document.createElement('div');
+    headerIcon.textContent = '▼';
+    headerIcon.style.cssText = `
+      color: #666666;
+      font-size: 10px;
+      transition: transform 0.2s;
+    `;
+
+    collapsibleHeader.appendChild(headerTitle);
+    collapsibleHeader.appendChild(headerIcon);
 
     const instructionsWrapper = document.createElement('div');
     instructionsWrapper.style.cssText = `
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
+      display: none;
+      background: #0a0a0a;
+      border: 1px solid #222222;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
       padding: 12px;
-      max-height: calc(100vh - 260px);
-      overflow-y: auto;
+      margin-top: -1px;
     `;
 
     const instructionsPre = document.createElement('pre');
     instructionsPre.style.cssText = `
       margin: 0;
-      font-size: 12px;
+      font-size: 11px;
       line-height: 1.6;
-      color: #1f2937;
+      color: #cccccc;
       font-family: ui-monospace, SFMono-Regular, SFMono, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       white-space: pre-wrap;
       word-break: break-word;
@@ -644,6 +690,26 @@ export class MCPSidebar {
     instructionsPre.textContent = this.instructions || 'Instructions will appear once tools are selected.';
 
     instructionsWrapper.appendChild(instructionsPre);
+
+    // Toggle functionality
+    let isExpanded = false;
+    collapsibleHeader.onclick = () => {
+      isExpanded = !isExpanded;
+      instructionsWrapper.style.display = isExpanded ? 'block' : 'none';
+      headerIcon.textContent = isExpanded ? '▲' : '▼';
+      collapsibleHeader.style.borderRadius = isExpanded ? '8px 8px 0 0' : '8px';
+    };
+
+    collapsibleHeader.onmouseenter = () => {
+      collapsibleHeader.style.background = '#1a1a1a';
+      collapsibleHeader.style.borderColor = '#333333';
+    };
+    collapsibleHeader.onmouseleave = () => {
+      collapsibleHeader.style.background = '#111111';
+      collapsibleHeader.style.borderColor = '#222222';
+    };
+
+    container.appendChild(collapsibleHeader);
     container.appendChild(instructionsWrapper);
 
     if (this.customInstructions.trim()) {
@@ -682,7 +748,7 @@ export class MCPSidebar {
       }
       await navigator.clipboard.writeText(this.instructions);
       button.textContent = 'Copied!';
-      button.style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+      button.style.background = 'linear-gradient(135deg, #ffffff 0%, #ffffff 100%)';
     } catch (error) {
       console.error('[Sidebar] Failed to copy instructions:', error);
       button.textContent = 'Copy failed';
@@ -690,7 +756,7 @@ export class MCPSidebar {
     } finally {
       setTimeout(() => {
         button.textContent = originalText;
-        button.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        button.style.background = 'linear-gradient(135deg, #ffffff 0%, #ffffff 100%)';
         button.style.opacity = '1';
       }, 1800);
     }
@@ -723,7 +789,7 @@ export class MCPSidebar {
     } finally {
       setTimeout(() => {
         button.textContent = originalText;
-        button.style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+        button.style.background = 'linear-gradient(135deg, #ffffff 0%, #ffffff 100%)';
         button.style.opacity = '1';
       }, 1800);
     }
@@ -740,21 +806,21 @@ export class MCPSidebar {
       display: flex;
       align-items: start;
       padding: 12px;
-      background: ${isSelected ? '#f0f4ff' : '#f9fafb'};
-      border: 1px solid ${isSelected ? '#667eea' : '#e5e7eb'};
+      background: ${isSelected ? '#ffffff' : '#0a0a0a'};
+      border: 1px solid ${isSelected ? '#000000' : '#333333'};
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.2s;
     `;
 
     card.onmouseenter = () => {
-      card.style.background = isSelected ? '#e8f0fe' : '#f3f4f6';
-      card.style.borderColor = '#667eea';
+      card.style.background = isSelected ? '#f5f5f5' : '#1a1a1a';
+      card.style.borderColor = isSelected ? '#000000' : '#555555';
     };
 
     card.onmouseleave = () => {
-      card.style.background = isSelected ? '#f0f4ff' : '#f9fafb';
-      card.style.borderColor = isSelected ? '#667eea' : '#e5e7eb';
+      card.style.background = isSelected ? '#ffffff' : '#0a0a0a';
+      card.style.borderColor = isSelected ? '#000000' : '#333333';
     };
 
     // Checkbox
@@ -767,7 +833,7 @@ export class MCPSidebar {
       margin-right: 12px;
       margin-top: 2px;
       cursor: pointer;
-      accent-color: #667eea;
+      accent-color: #000000;
       flex-shrink: 0;
     `;
 
@@ -801,7 +867,7 @@ export class MCPSidebar {
     name.style.cssText = `
       font-weight: 600;
       font-size: 14px;
-      color: #111827;
+      color: ${isSelected ? '#000000' : '#ffffff'};
       margin-bottom: 4px;
       word-break: break-word;
     `;
@@ -810,7 +876,7 @@ export class MCPSidebar {
     description.textContent = tool.description || 'No description';
     description.style.cssText = `
       font-size: 12px;
-      color: #6b7280;
+      color: ${isSelected ? '#666666' : '#999999'};
       line-height: 1.4;
       word-break: break-word;
     `;
@@ -830,60 +896,154 @@ export class MCPSidebar {
   private renderSettingsTab(container: HTMLElement): void {
     const section = document.createElement('div');
 
-    const statusCard = document.createElement('div');
-    statusCard.style.cssText = `
-      background: ${this.connectionStatus.isConnected ? '#d1fae5' : '#fee2e2'};
-      padding: 16px;
-      border-radius: 8px;
+    // Connection Info Button
+    const infoHeader = document.createElement('div');
+    infoHeader.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       margin-bottom: 16px;
-      border: 1px solid ${this.connectionStatus.isConnected ? '#10b981' : '#ef4444'};
+      padding: 12px;
+      background: #111111;
+      border: 1px solid #222222;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
     `;
+
+    const infoTitle = document.createElement('div');
+    infoTitle.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    `;
+    infoTitle.innerHTML = `<span style="font-size: 14px;">ⓘ</span> CONNECTION INFO`;
+
+    const infoIcon = document.createElement('span');
+    infoIcon.textContent = '▼';
+    infoIcon.style.cssText = `
+      color: #666666;
+      font-size: 10px;
+      transition: transform 0.2s;
+    `;
+
+    infoHeader.appendChild(infoTitle);
+    infoHeader.appendChild(infoIcon);
+
+    // Expandable connection info content
+    const infoContent = document.createElement('div');
+    infoContent.style.cssText = `
+      display: none;
+      padding: 16px;
+      background: #0a0a0a;
+      border: 1px solid #222222;
+      border-top: none;
+      border-radius: 0 0 4px 4px;
+      margin-top: -1px;
+      margin-bottom: 16px;
+    `;
+
+    // Helper to format timestamp
+    const formatTimestamp = (timestamp?: number): string => {
+      if (!timestamp) return 'N/A';
+      const date = new Date(timestamp);
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    };
 
     const statusText = document.createElement('div');
-    statusText.textContent = this.connectionStatus.isConnected
-      ? `✓ Connected via ${this.connectionStatus.transport}`
-      : '✗ Disconnected';
-    statusText.style.cssText = `
-      font-weight: 600;
-      font-size: 15px;
-      color: ${this.connectionStatus.isConnected ? '#065f46' : '#991b1b'};
-      margin-bottom: 8px;
+    statusText.innerHTML = `
+      <div style="margin-bottom: 12px;">
+        <div style="font-size: 11px; color: #666666; margin-bottom: 4px; letter-spacing: 1px;">STATUS</div>
+        <div style="font-size: 13px; color: ${this.connectionStatus.isConnected ? '#ffffff' : '#666666'}; font-weight: 500;">
+          ${this.connectionStatus.isConnected ? '● CONNECTED' : '○ DISCONNECTED'}
+        </div>
+      </div>
+      <div style="margin-bottom: 12px;">
+        <div style="font-size: 11px; color: #666666; margin-bottom: 4px; letter-spacing: 1px;">TRANSPORT</div>
+        <div style="font-size: 13px; color: #ffffff; font-weight: 500;">
+          ${this.connectionStatus.transport || 'N/A'}
+        </div>
+      </div>
+      ${this.connectionStatus.connectedAt ? `
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; color: #666666; margin-bottom: 4px; letter-spacing: 1px;">CONNECTED AT</div>
+          <div style="font-size: 13px; color: #ffffff; font-weight: 500;">
+            ${formatTimestamp(this.connectionStatus.connectedAt)}
+          </div>
+        </div>
+      ` : ''}
+      ${this.connectionStatus.lastReconnectedAt ? `
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; color: #666666; margin-bottom: 4px; letter-spacing: 1px;">LAST RECONNECTED</div>
+          <div style="font-size: 13px; color: #ffffff; font-weight: 500;">
+            ${formatTimestamp(this.connectionStatus.lastReconnectedAt)}
+          </div>
+        </div>
+      ` : ''}
+      <div>
+        <div style="font-size: 11px; color: #666666; margin-bottom: 4px; letter-spacing: 1px;">AVAILABLE TOOLS</div>
+        <div style="font-size: 13px; color: #ffffff; font-weight: 500;">
+          ${this.tools.length}
+        </div>
+      </div>
     `;
 
-    const toolCount = document.createElement('div');
-    toolCount.textContent = `Available Tools: ${this.tools.length}`;
-    toolCount.style.cssText = `
-      font-size: 13px;
-      color: ${this.connectionStatus.isConnected ? '#047857' : '#b91c1c'};
-    `;
+    infoContent.appendChild(statusText);
 
-    statusCard.appendChild(statusText);
-    statusCard.appendChild(toolCount);
-    container.appendChild(statusCard);
+    // Toggle expandable section
+    let isExpanded = false;
+    infoHeader.onclick = () => {
+      isExpanded = !isExpanded;
+      infoContent.style.display = isExpanded ? 'block' : 'none';
+      infoIcon.textContent = isExpanded ? '▲' : '▼';
+      infoHeader.style.borderRadius = isExpanded ? '4px 4px 0 0' : '4px';
+    };
+
+    infoHeader.onmouseenter = () => {
+      infoHeader.style.background = '#1a1a1a';
+      infoHeader.style.borderColor = '#333333';
+    };
+    infoHeader.onmouseleave = () => {
+      infoHeader.style.background = '#111111';
+      infoHeader.style.borderColor = '#222222';
+    };
+
+    container.appendChild(infoHeader);
+    container.appendChild(infoContent);
 
     section.innerHTML = `
-      <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #111827;">
+      <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #ffffff;">
         Connection Settings
       </h3>
-      <div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+      <div style="background: #0a0a0a; padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #222222;">
         <div style="margin-bottom: 12px;">
-          <label style="display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px;">
+          <label style="display: block; font-size: 13px; font-weight: 600; color: #cccccc; margin-bottom: 6px;">
             Proxy URL
           </label>
           <input
             type="text"
             id="sidebar-proxy-url"
             placeholder="ws://localhost:3006/message"
-            style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; box-sizing: border-box; background: white; color: #111827;"
+            style="width: 100%; padding: 8px 12px; border: 1px solid #333333; border-radius: 6px; font-size: 14px; box-sizing: border-box; background: #000000; color: #ffffff;"
           />
         </div>
         <div style="margin-bottom: 12px;">
-          <label style="display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px;">
+          <label style="display: block; font-size: 13px; font-weight: 600; color: #cccccc; margin-bottom: 6px;">
             Transport Type
           </label>
           <select
             id="sidebar-transport-type"
-            style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; box-sizing: border-box; cursor: pointer; background: white; color: #111827;"
+            style="width: 100%; padding: 8px 12px; border: 1px solid #333333; border-radius: 6px; font-size: 14px; box-sizing: border-box; cursor: pointer; background: #000000; color: #ffffff;"
           >
             <option value="websocket">WebSocket (ws://)</option>
             <option value="sse">SSE (http:// or https://)</option>
@@ -895,14 +1055,14 @@ export class MCPSidebar {
       <div style="display: flex; gap: 8px; margin-top: 16px;">
         <button
           id="sidebar-connect-btn"
-          style="flex: 1; padding: 12px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;"
+          style="flex: 1; padding: 12px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;"
         >
           ${this.connectionStatus.isConnected ? '🔌 Reconnect' : '🔌 Connect'}
         </button>
         ${this.connectionStatus.isConnected ? `
         <button
           id="sidebar-disconnect-btn"
-          style="flex: 1; padding: 12px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;"
+          style="flex: 1; padding: 12px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #ffffff; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;"
         >
           ✕ Disconnect
         </button>
@@ -1042,17 +1202,17 @@ export class MCPSidebar {
     if (this.connectionStatus.isConnected && this.connectionStatus.transport) {
       const info = document.createElement('div');
       info.style.cssText = `
-        background: #f9fafb;
+        background: #0a0a0a;
         padding: 16px;
         border-radius: 8px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid #222222;
       `;
 
       info.innerHTML = `
         <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #111827;">
           Connection Details
         </h4>
-        <div style="font-size: 13px; color: #6b7280; line-height: 1.8;">
+        <div style="font-size: 13px; color: #999999; line-height: 1.8;">
           <div><strong>Transport:</strong> ${this.connectionStatus.transport}</div>
           <div><strong>Selected Tools:</strong> ${this.selectedTools.size} / ${this.tools.length}</div>
         </div>
@@ -1105,6 +1265,25 @@ export class MCPSidebar {
     this.isMinimized = !this.isMinimized;
     if (this.container) {
       this.container.style.width = this.isMinimized ? '56px' : `${this.currentWidth}px`;
+
+      // Hide/show content when minimizing
+      const tabNav = this.container.querySelector('#mcp-sidebar-tabnav') as HTMLElement;
+      const content = this.container.querySelector('#mcp-sidebar-content') as HTMLElement;
+      const headerTitle = this.container.querySelector('#mcp-sidebar-title') as HTMLElement;
+      const minimizeBtn = this.container.querySelector('button') as HTMLButtonElement;
+
+      if (tabNav) {
+        tabNav.style.display = this.isMinimized ? 'none' : 'flex';
+      }
+      if (content) {
+        content.style.display = this.isMinimized ? 'none' : 'block';
+      }
+      if (headerTitle) {
+        headerTitle.style.display = this.isMinimized ? 'none' : 'block';
+      }
+      if (minimizeBtn) {
+        minimizeBtn.innerHTML = this.isMinimized ? '→' : '←';
+      }
     }
   }
 

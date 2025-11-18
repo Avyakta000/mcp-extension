@@ -147,7 +147,28 @@ export class MCPModal {
       max-height: 80vh;
       overflow-y: auto;
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      scrollbar-width: thin;
+      scrollbar-color: #cccccc transparent;
     `;
+
+    // Add webkit scrollbar styling
+    const style = document.createElement('style');
+    style.textContent = `
+      #mcp-settings-modal div::-webkit-scrollbar {
+        width: 8px;
+      }
+      #mcp-settings-modal div::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      #mcp-settings-modal div::-webkit-scrollbar-thumb {
+        background: #cccccc;
+        border-radius: 4px;
+      }
+      #mcp-settings-modal div::-webkit-scrollbar-thumb:hover {
+        background: #999999;
+      }
+    `;
+    document.head.appendChild(style);
 
     // Header
     const header = document.createElement('div');
@@ -164,7 +185,7 @@ export class MCPModal {
       margin: 0;
       font-size: 20px;
       font-weight: 600;
-      color: #111827;
+      color: #000000;
     `;
 
     const closeBtn = document.createElement('button');
@@ -174,7 +195,7 @@ export class MCPModal {
       border: none;
       font-size: 24px;
       cursor: pointer;
-      color: #6b7280;
+      color: #666666;
       padding: 0;
       width: 32px;
       height: 32px;
@@ -184,7 +205,7 @@ export class MCPModal {
       border-radius: 6px;
       transition: background 0.2s;
     `;
-    closeBtn.onmouseenter = () => closeBtn.style.background = '#f3f4f6';
+    closeBtn.onmouseenter = () => closeBtn.style.background = '#f5f5f5';
     closeBtn.onmouseleave = () => closeBtn.style.background = 'none';
     closeBtn.onclick = () => this.hide();
 
@@ -233,7 +254,7 @@ export class MCPModal {
     sidebarButton.style.cssText = `
       width: 100%;
       padding: 12px;
-      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      background: #000000;
       color: white;
       border: none;
       border-radius: 8px;
@@ -241,10 +262,10 @@ export class MCPModal {
       font-weight: 600;
       cursor: pointer;
       margin-bottom: 16px;
-      transition: opacity 0.2s;
+      transition: background 0.2s;
     `;
-    sidebarButton.onmouseenter = () => sidebarButton.style.opacity = '0.9';
-    sidebarButton.onmouseleave = () => sidebarButton.style.opacity = '1';
+    sidebarButton.onmouseenter = () => sidebarButton.style.background = '#333333';
+    sidebarButton.onmouseleave = () => sidebarButton.style.background = '#000000';
     sidebarButton.onclick = () => {
       this.isSidebarVisible = !this.isSidebarVisible;
       if (this.onToggleSidebar) {
@@ -260,9 +281,6 @@ export class MCPModal {
     const instructionsSection = this.createInstructionsSection();
     content.appendChild(instructionsSection);
 
-    // Instructions preview section
-    const previewSection = this.createInstructionsPreviewSection();
-    content.appendChild(previewSection);
     overlay.appendChild(content);
 
     // Click outside to close
@@ -291,7 +309,7 @@ export class MCPModal {
       justify-content: space-between;
       align-items: center;
       padding: 12px;
-      background: #f9fafb;
+      background: #f5f5f5;
       border-radius: 8px;
     `;
 
@@ -305,7 +323,7 @@ export class MCPModal {
     labelEl.style.cssText = `
       font-weight: 600;
       font-size: 15px;
-      color: #111827;
+      color: #000000;
       margin-bottom: 4px;
     `;
 
@@ -313,7 +331,7 @@ export class MCPModal {
     descEl.textContent = description;
     descEl.style.cssText = `
       font-size: 13px;
-      color: #6b7280;
+      color: #666666;
     `;
 
     labelContainer.appendChild(labelEl);
@@ -360,7 +378,7 @@ export class MCPModal {
       left: 0;
       right: 0;
       bottom: 0;
-      background-color: ${initialValue ? '#667eea' : '#cbd5e0'};
+      background-color: ${initialValue ? '#000000' : '#cccccc'};
       border-radius: 28px;
       transition: 0.3s;
     `;
@@ -385,7 +403,7 @@ export class MCPModal {
     // Handle toggle
     input.onchange = () => {
       const checked = input.checked;
-      slider.style.backgroundColor = checked ? '#667eea' : '#cbd5e0';
+      slider.style.backgroundColor = checked ? '#000000' : '#cccccc';
       knob.style.left = checked ? '24px' : '4px';
       onChange(checked);
     };
@@ -394,84 +412,11 @@ export class MCPModal {
   }
 
   /**
-   * Create instructions section
+   * Create instructions section (buttons only)
    */
   private createInstructionsSection(): HTMLElement {
-    const section = document.createElement('div');
-    section.id = 'mcp-instructions-section';
-    section.style.cssText = `
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      padding: 16px;
-      background: #f9fafb;
-      border-radius: 8px;
-      margin-top: 16px;
-    `;
-
-    const label = document.createElement('label');
-    label.textContent = 'Instructions';
-    label.style.cssText = `
-      font-weight: 600;
-      font-size: 15px;
-      color: #111827;
-    `;
-
-    const description = document.createElement('div');
-    description.textContent = 'Customize how the LLM should behave with MCP tools';
-    description.style.cssText = `
-      font-size: 13px;
-      color: #6b7280;
-      margin-bottom: 4px;
-    `;
-
-    const textarea = document.createElement('textarea');
-    textarea.id = 'mcp-instructions-textarea';
-    textarea.value = this.settings.instructions;
-    textarea.placeholder = 'e.g., Always explain your reasoning before using tools...';
-    textarea.rows = 3;
-    textarea.style.cssText = `
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      font-size: 13px;
-      font-family: system-ui, -apple-system, sans-serif;
-      resize: vertical;
-      box-sizing: border-box;
-      background: white;
-      color: #111827;
-    `;
-
-    textarea.onfocus = () => {
-      textarea.style.outline = '2px solid #667eea';
-      textarea.style.borderColor = '#667eea';
-    };
-
-    textarea.onblur = () => {
-      textarea.style.outline = 'none';
-      textarea.style.borderColor = '#d1d5db';
-    };
-
-    // Save instructions on change (debounced)
-    let timeout: NodeJS.Timeout;
-    textarea.oninput = () => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        this.settings.instructions = textarea.value;
-        this.saveSettings();
-      }, 500);
-    };
-
-    section.appendChild(label);
-    section.appendChild(description);
-    section.appendChild(textarea);
-
-    // Add instruction buttons section
-    const buttonsSection = this.createInstructionButtonsSection();
-    section.appendChild(buttonsSection);
-
-    return section;
+    // Return only the buttons section
+    return this.createInstructionButtonsSection();
   }
 
   /**
@@ -483,17 +428,7 @@ export class MCPModal {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #e5e7eb;
-    `;
-
-    const infoText = document.createElement('div');
-    infoText.textContent = 'Insert MCP instructions into ChatGPT to enable tool usage:';
-    infoText.style.cssText = `
-      font-size: 13px;
-      color: #6b7280;
-      margin-bottom: 4px;
+      margin-top: 16px;
     `;
 
     // File upload button container
@@ -509,18 +444,18 @@ export class MCPModal {
     attachButton.textContent = '📎 Attach Instructions File';
     attachButton.style.cssText = `
       flex: 1;
-      padding: 8px 16px;
-      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      padding: 10px 16px;
+      background: #000000;
       color: white;
       border: none;
       border-radius: 6px;
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: opacity 0.2s;
+      transition: background 0.2s;
     `;
-    attachButton.onmouseenter = () => attachButton.style.opacity = '0.8';
-    attachButton.onmouseleave = () => attachButton.style.opacity = '1';
+    attachButton.onmouseenter = () => attachButton.style.background = '#333333';
+    attachButton.onmouseleave = () => attachButton.style.background = '#000000';
     attachButton.onclick = () => this.attachInstructionsFile();
 
     fileUploadRow.appendChild(attachButton);
@@ -536,18 +471,22 @@ export class MCPModal {
     copyButton.textContent = 'Copy Instructions';
     copyButton.style.cssText = `
       flex: 1;
-      padding: 8px 16px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
+      padding: 10px 16px;
+      background: white;
+      color: #000000;
+      border: 1px solid #000000;
       border-radius: 6px;
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: opacity 0.2s;
+      transition: all 0.2s;
     `;
-    copyButton.onmouseenter = () => copyButton.style.opacity = '0.8';
-    copyButton.onmouseleave = () => copyButton.style.opacity = '1';
+    copyButton.onmouseenter = () => {
+      copyButton.style.background = '#f5f5f5';
+    };
+    copyButton.onmouseleave = () => {
+      copyButton.style.background = 'white';
+    };
     copyButton.onclick = () => this.copyInstructions(copyButton);
 
     // Insert button
@@ -555,24 +494,27 @@ export class MCPModal {
     insertButton.textContent = 'Insert Instructions';
     insertButton.style.cssText = `
       flex: 1;
-      padding: 8px 16px;
-      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-      color: white;
-      border: none;
+      padding: 10px 16px;
+      background: white;
+      color: #000000;
+      border: 1px solid #000000;
       border-radius: 6px;
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: opacity 0.2s;
+      transition: all 0.2s;
     `;
-    insertButton.onmouseenter = () => insertButton.style.opacity = '0.8';
-    insertButton.onmouseleave = () => insertButton.style.opacity = '1';
+    insertButton.onmouseenter = () => {
+      insertButton.style.background = '#f5f5f5';
+    };
+    insertButton.onmouseleave = () => {
+      insertButton.style.background = 'white';
+    };
     insertButton.onclick = () => this.insertInstructions(insertButton);
 
     buttonsRow.appendChild(copyButton);
     buttonsRow.appendChild(insertButton);
 
-    section.appendChild(infoText);
     section.appendChild(fileUploadRow);
     section.appendChild(buttonsRow);
 
@@ -623,7 +565,7 @@ export class MCPModal {
       top: 20px;
       right: 20px;
       padding: 12px 20px;
-      background: ${type === 'success' ? 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)' : 'linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%)'};
+      background: ${type === 'success' ? '#000000' : '#666666'};
       color: white;
       border-radius: 8px;
       font-size: 14px;
@@ -655,11 +597,15 @@ export class MCPModal {
       await navigator.clipboard.writeText(instructions);
 
       button.textContent = '✓ Copied!';
-      button.style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+      button.style.background = '#000000';
+      button.style.color = 'white';
+      button.style.border = '1px solid #000000';
 
       setTimeout(() => {
         button.textContent = originalText;
-        button.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        button.style.background = 'white';
+        button.style.color = '#000000';
+        button.style.border = '1px solid #000000';
       }, 2000);
 
       console.log('[MCP Modal] Instructions copied to clipboard');
@@ -667,11 +613,15 @@ export class MCPModal {
       console.error('[MCP Modal] Failed to copy instructions:', error);
 
       button.textContent = '✗ Failed';
-      button.style.background = 'linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%)';
+      button.style.background = '#666666';
+      button.style.color = 'white';
+      button.style.border = '1px solid #666666';
 
       setTimeout(() => {
         button.textContent = originalText;
-        button.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        button.style.background = 'white';
+        button.style.color = '#000000';
+        button.style.border = '1px solid #000000';
       }, 2000);
     }
   }
@@ -691,11 +641,15 @@ export class MCPModal {
 
       if (success) {
         button.textContent = '✓ Inserted!';
-        button.style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+        button.style.background = '#000000';
+        button.style.color = 'white';
+        button.style.border = '1px solid #000000';
 
         setTimeout(() => {
           button.textContent = originalText;
-          button.style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+          button.style.background = 'white';
+          button.style.color = '#000000';
+          button.style.border = '1px solid #000000';
         }, 2000);
 
         console.log('[MCP Modal] Instructions inserted into ChatGPT');
@@ -709,11 +663,15 @@ export class MCPModal {
       console.error('[MCP Modal] Failed to insert instructions:', error);
 
       button.textContent = '✗ Failed';
-      button.style.background = 'linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%)';
+      button.style.background = '#666666';
+      button.style.color = 'white';
+      button.style.border = '1px solid #666666';
 
       setTimeout(() => {
         button.textContent = originalText;
-        button.style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+        button.style.background = 'white';
+        button.style.color = '#000000';
+        button.style.border = '1px solid #000000';
       }, 2000);
     }
   }

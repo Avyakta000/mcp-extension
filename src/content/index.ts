@@ -251,7 +251,7 @@ class ChatGPTMCPExtension {
       this.mcpButton.title = `MCP Tools (Connected via ${this.connectionStatus.transport})${isEnabled ? ' - Active' : ''}`;
     } else {
       // Disconnected
-      this.mcpButton.style.background = 'linear-gradient(135deg, #bbb 0%, #888 100%)';
+      this.mcpButton.style.background = 'linear-gradient(135deg, #bbb 0%, #666666 100%)';
       this.mcpButton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
       this.mcpButton.style.transform = 'scale(1)';
       this.mcpButton.title = 'MCP Tools (Disconnected)';
@@ -293,10 +293,10 @@ class ChatGPTMCPExtension {
                 break;
               }
             } else if (node.nodeType === Node.TEXT_NODE) {
-              // Check text nodes for tool call patterns
+              // Check text nodes for tool call and function result patterns
               const text = node.textContent || '';
-              if (text.includes('<function_calls>') || text.includes('<invoke')) {
-                console.log('[MCP Extension] Tool call pattern in text node');
+              if (text.includes('<function_calls>') || text.includes('<invoke') || text.includes('<function_result')) {
+                console.log('[MCP Extension] Tool call/result pattern in text node');
                 this.scanForToolCalls();
                 break;
               }
@@ -307,8 +307,8 @@ class ChatGPTMCPExtension {
         // Check characterData changes (streaming content)
         if (mutation.type === 'characterData') {
           const text = mutation.target.textContent || '';
-          if (text.includes('<function_calls>') || text.includes('<invoke')) {
-            console.log('[MCP Extension] Tool call pattern in characterData');
+          if (text.includes('<function_calls>') || text.includes('<invoke') || text.includes('<function_result')) {
+            console.log('[MCP Extension] Tool call/result pattern in characterData');
             this.scanForToolCalls();
             break;
           }
@@ -327,13 +327,13 @@ class ChatGPTMCPExtension {
   }
 
   /**
-   * Check if element potentially contains tool calls
+   * Check if element potentially contains tool calls or function results
    */
   private containsPotentialToolCall(element: HTMLElement): boolean {
     const text = element.textContent || '';
 
-    // Check for XML pattern
-    if (text.includes('<function_calls>') || text.includes('<invoke')) {
+    // Check for XML patterns (tool calls and function results)
+    if (text.includes('<function_calls>') || text.includes('<invoke') || text.includes('<function_result')) {
       return true;
     }
 
@@ -357,6 +357,8 @@ class ChatGPTMCPExtension {
     // Look for <pre> blocks only (avoids processing both <pre> and <code> child)
     const preBlocks = document.querySelectorAll('pre');
 
+    console.log(`[MCP Extension] Scanning ${preBlocks.length} pre blocks`);
+
     preBlocks.forEach((block: Element) => {
       const preElement = block as HTMLElement;
 
@@ -366,6 +368,13 @@ class ChatGPTMCPExtension {
       }
 
       let text = preElement.textContent || '';
+
+      // Check for function_result pattern (case insensitive)
+      if (text.toLowerCase().includes('<function_result')) {
+        console.log('[MCP Extension] Found function_result pattern!');
+        this.processFunctionResults(preElement, text);
+        return;
+      }
 
       // Must contain function_calls pattern
       if (!text.includes('<function_calls>') && !text.includes('<invoke')) {
@@ -401,6 +410,45 @@ class ChatGPTMCPExtension {
         });
       }
     });
+  }
+
+  /**
+   * Process function result tags
+   */
+  private processFunctionResults(preElement: HTMLElement, text: string): void {
+    // Clean the text
+    const originalText = text;
+    text = this.cleanCodeBlockText(text);
+
+    console.log('[MCP Extension] Processing function result...');
+    console.log('[MCP Extension] Original text:', originalText.substring(0, 200));
+    console.log('[MCP Extension] Cleaned text:', text.substring(0, 200));
+
+    // Parse function results
+    const results = this.parser.parseFunctionResults(text);
+
+    console.log(`[MCP Extension] Parser returned ${results.length} result(s)`);
+
+    if (results.length > 0) {
+      console.log(`[MCP Extension] ✅ Parsed ${results.length} function result(s):`, results);
+
+      // Mark as processed
+      this.processedElements.add(preElement);
+
+      const codeChild = preElement.querySelector('code');
+      if (codeChild) {
+        this.processedElements.add(codeChild as HTMLElement);
+      }
+
+      // Hide the code block
+      this.hideXMLCodeBlock(preElement);
+
+      // Inject UI for each result
+      results.forEach(result => {
+        const container = this.getOrCreateToolCallContainer(preElement);
+        this.injectFunctionResultUI(result, container);
+      });
+    }
   }
 
   /**
@@ -489,35 +537,36 @@ class ChatGPTMCPExtension {
     container.style.cssText = `
       margin: 16px 0;
       padding: 16px;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 8px;
-      color: #e5e5e5;
+      background: #000000;
+      border: 1px solid #222222;
+      border-radius: 4px;
+      color: #ffffff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     `;
 
     // Function name header (large, prominent)
     const header = document.createElement('div');
     header.style.cssText = `
-      font-size: 18px;
-      font-weight: 600;
-      color: #3b82f6;
-      margin-bottom: 4px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
       display: flex;
       align-items: center;
       gap: 8px;
+      letter-spacing: 0.5px;
     `;
     header.innerHTML = `
       <span>${toolCall.toolName}</span>
       <button class="expand-btn" style="
         background: transparent;
-        border: none;
-        color: #888;
+        border: 1px solid #333333;
+        color: #666666;
         cursor: pointer;
-        font-size: 12px;
+        font-size: 10px;
         padding: 4px 8px;
-        border-radius: 4px;
-        transition: background 0.2s;
+        border-radius: 3px;
+        transition: all 0.2s;
       ">▼</button>
     `;
 
@@ -527,7 +576,7 @@ class ChatGPTMCPExtension {
     const description = document.createElement('div');
     description.style.cssText = `
       font-size: 13px;
-      color: #999;
+      color: #888888;
       margin-bottom: 12px;
     `;
     description.textContent = 'Tool execution';
@@ -540,9 +589,9 @@ class ChatGPTMCPExtension {
       display: none;
       margin: 12px 0;
       padding: 12px;
-      background: #252525;
+      background: #111111;
       border-radius: 6px;
-      border: 1px solid #333;
+      border: 1px solid #222222;
     `;
 
     // Parameters display
@@ -557,7 +606,7 @@ class ChatGPTMCPExtension {
         paramName.style.cssText = `
           font-size: 14px;
           font-weight: 600;
-          color: #e5e5e5;
+          color: #ffffff;
           margin-bottom: 6px;
         `;
         paramName.textContent = key;
@@ -566,10 +615,10 @@ class ChatGPTMCPExtension {
         paramValue.style.cssText = `
           margin: 0;
           padding: 12px;
-          background: #1a1a1a;
-          border: 1px solid #333;
+          background: #0a0a0a;
+          border: 1px solid #222222;
           border-radius: 4px;
-          color: #e5e5e5;
+          color: #ffffff;
           font-size: 13px;
           font-family: 'Consolas', 'Monaco', monospace;
           overflow-x: auto;
@@ -602,7 +651,7 @@ class ChatGPTMCPExtension {
       background: transparent;
       border: 1px solid #444;
       border-radius: 6px;
-      color: #e5e5e5;
+      color: #ffffff;
       font-size: 13px;
       cursor: pointer;
       transition: all 0.2s;
@@ -629,10 +678,10 @@ class ChatGPTMCPExtension {
     runBtn.className = 'run-btn';
     runBtn.style.cssText = `
       padding: 8px 16px;
-      background: #3b82f6;
-      border: none;
-      border-radius: 6px;
-      color: white;
+      background: #ffffff;
+      border: 1px solid #ffffff;
+      border-radius: 4px;
+      color: #000000;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
@@ -643,10 +692,12 @@ class ChatGPTMCPExtension {
     `;
     runBtn.innerHTML = '▶ Run';
     runBtn.onmouseover = () => {
-      runBtn.style.background = '#2563eb';
+      runBtn.style.background = '#000000';
+      runBtn.style.color = '#ffffff';
     };
     runBtn.onmouseout = () => {
-      runBtn.style.background = '#3b82f6';
+      runBtn.style.background = '#ffffff';
+      runBtn.style.color = '#000000';
     };
 
     buttonsContainer.appendChild(runBtn);
@@ -682,6 +733,109 @@ class ChatGPTMCPExtension {
         await this.executor.executeToolInContainer(toolCall, container);
       };
     }
+  }
+
+  /**
+   * Inject function result UI
+   */
+  private async injectFunctionResultUI(
+    result: { callId: string; status: string; content: string; rawText: string },
+    messageElement: HTMLElement
+  ): Promise<void> {
+    // Create main container
+    const container = document.createElement('div');
+    container.className = 'mcp-function-result';
+    container.style.cssText = `
+      margin: 16px 0;
+      padding: 16px;
+      background: ${result.status === 'error' ? '#0a0a0a' : '#0a0a0a'};
+      border: 1px solid ${result.status === 'error' ? '#ffffff' : '#ffffff'};
+      border-radius: 8px;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    `;
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = `
+      font-size: 16px;
+      font-weight: 600;
+      color: ${result.status === 'error' ? '#ffffff' : '#ffffff'};
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    `;
+    header.innerHTML = `
+      <span>${result.status === 'error' ? '✗ Function Result (Error)' : '✓ Function Result'}</span>
+      <span style="font-size: 12px; color: #666666; font-weight: normal;">call_id: ${result.callId}</span>
+    `;
+    container.appendChild(header);
+
+    // Content
+    const contentDiv = document.createElement('div');
+    contentDiv.style.cssText = `
+      margin: 12px 0;
+      padding: 12px;
+      background: #111111;
+      border-radius: 6px;
+      border: 1px solid #222222;
+    `;
+
+    const contentPre = document.createElement('pre');
+    contentPre.style.cssText = `
+      margin: 0;
+      padding: 0;
+      color: #ffffff;
+      font-size: 13px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    `;
+    contentPre.textContent = result.content;
+    contentDiv.appendChild(contentPre);
+    container.appendChild(contentDiv);
+
+    // Buttons
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.style.cssText = `
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+    `;
+
+    // Copy button
+    const copyBtn = document.createElement('button');
+    copyBtn.style.cssText = `
+      padding: 8px 16px;
+      background: #ffffff;
+      color: #000000;
+      border: 1px solid #ffffff;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    `;
+    copyBtn.textContent = 'Copy to Clipboard';
+    copyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(result.content);
+        copyBtn.textContent = '✓ Copied!';
+        setTimeout(() => {
+          copyBtn.textContent = 'Copy to Clipboard';
+        }, 1500);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    };
+
+    buttonsContainer.appendChild(copyBtn);
+    container.appendChild(buttonsContainer);
+ 
+    // Append to message
+    messageElement.appendChild(container);
   }
 
   /**
