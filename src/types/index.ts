@@ -118,3 +118,23 @@ export interface JSONRPCNotification {
   method: string;
   params?: any;
 }
+
+// Automation Types
+export interface AutomationState {
+  autoExecute: boolean;
+  autoInsert: boolean;
+  autoSubmit: boolean;
+  autoExecuteDelay: number;  // in seconds
+  autoInsertDelay: number;   // in seconds
+  autoSubmitDelay: number;   // in seconds
+}
+
+export interface ToolExecutionCompleteDetail {
+  result?: string;
+  toolName?: string;
+  isFileAttachment?: boolean;
+  file?: File;
+  fileName?: string;
+  skipAutoInsertCheck?: boolean;
+  callId?: string;
+}

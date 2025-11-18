@@ -3,9 +3,10 @@
  * Provides a resizable sidebar with tabs for tools, settings, and connection management
  */
 
-import { MCPTool, ConnectionStatus } from '../types';
+import { MCPTool, ConnectionStatus, AutomationState } from '../types';
 import { generateMCPInstructions } from './instruction-generator';
 import { ChatGPTAdapter } from './chatgpt-adapter';
+import { AutomationService } from '../services/automation.service';
 
 export interface SidebarSettings {
   enabled: boolean;
@@ -1159,6 +1160,179 @@ export class MCPSidebar {
         } catch (error: any) {
           alert(`Disconnection error: ${error.message}`);
         }
+      };
+    }
+
+    // Add automation settings section
+    this.renderAutomationSettings(container);
+  }
+
+  /**
+   * Render automation settings section
+   */
+  private renderAutomationSettings(container: HTMLElement): void {
+    const automationService = AutomationService.getInstance();
+    const state = automationService.getState();
+
+    const automationSection = document.createElement('div');
+    automationSection.style.cssText = `
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #222222;
+    `;
+
+    automationSection.innerHTML = `
+      <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #ffffff;">
+        Automation
+      </h3>
+      <div style="background: #0a0a0a; padding: 16px; border-radius: 8px; border: 1px solid #222222; display: flex; flex-direction: column; gap: 16px;">
+        <!-- Auto Execute Toggle -->
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <label style="display: block; font-size: 13px; font-weight: 600; color: #cccccc; margin-bottom: 4px;">
+              Auto Execute
+            </label>
+            <span style="font-size: 11px; color: #666666;">Automatically execute detected tools</span>
+          </div>
+          <input
+            type="checkbox"
+            id="automation-auto-execute"
+            ${state.autoExecute ? 'checked' : ''}
+            style="width: 18px; height: 18px; cursor: pointer;"
+          />
+        </div>
+
+        <!-- Auto Insert Toggle -->
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <label style="display: block; font-size: 13px; font-weight: 600; color: #cccccc; margin-bottom: 4px;">
+              Auto Insert
+            </label>
+            <span style="font-size: 11px; color: #666666;">Automatically insert results into chat</span>
+          </div>
+          <input
+            type="checkbox"
+            id="automation-auto-insert"
+            ${state.autoInsert ? 'checked' : ''}
+            style="width: 18px; height: 18px; cursor: pointer;"
+          />
+        </div>
+
+        <!-- Auto Submit Toggle -->
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <label style="display: block; font-size: 13px; font-weight: 600; color: #cccccc; margin-bottom: 4px;">
+              Auto Submit
+            </label>
+            <span style="font-size: 11px; color: #666666;">Automatically submit after insert</span>
+          </div>
+          <input
+            type="checkbox"
+            id="automation-auto-submit"
+            ${state.autoSubmit ? 'checked' : ''}
+            style="width: 18px; height: 18px; cursor: pointer;"
+          />
+        </div>
+
+        <!-- Delay Settings -->
+        <div style="border-top: 1px solid #222222; padding-top: 12px;">
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: #cccccc; margin-bottom: 6px;">
+              Execute Delay (seconds)
+            </label>
+            <input
+              type="number"
+              id="automation-execute-delay"
+              value="${state.autoExecuteDelay}"
+              min="0"
+              step="1"
+              style="width: 100%; padding: 8px 12px; border: 1px solid #333333; border-radius: 6px; font-size: 14px; box-sizing: border-box; background: #000000; color: #ffffff;"
+            />
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: #cccccc; margin-bottom: 6px;">
+              Insert Delay (seconds)
+            </label>
+            <input
+              type="number"
+              id="automation-insert-delay"
+              value="${state.autoInsertDelay}"
+              min="0"
+              step="1"
+              style="width: 100%; padding: 8px 12px; border: 1px solid #333333; border-radius: 6px; font-size: 14px; box-sizing: border-box; background: #000000; color: #ffffff;"
+            />
+          </div>
+
+          <div>
+            <label style="display: block; font-size: 12px; font-weight: 600; color: #cccccc; margin-bottom: 6px;">
+              Submit Delay (seconds)
+            </label>
+            <input
+              type="number"
+              id="automation-submit-delay"
+              value="${state.autoSubmitDelay}"
+              min="0"
+              step="1"
+              style="width: 100%; padding: 8px 12px; border: 1px solid #333333; border-radius: 6px; font-size: 14px; box-sizing: border-box; background: #000000; color: #ffffff;"
+            />
+          </div>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(automationSection);
+
+    // Setup event handlers
+    const autoExecuteCheckbox = document.getElementById('automation-auto-execute') as HTMLInputElement;
+    const autoInsertCheckbox = document.getElementById('automation-auto-insert') as HTMLInputElement;
+    const autoSubmitCheckbox = document.getElementById('automation-auto-submit') as HTMLInputElement;
+    const executeDelayInput = document.getElementById('automation-execute-delay') as HTMLInputElement;
+    const insertDelayInput = document.getElementById('automation-insert-delay') as HTMLInputElement;
+    const submitDelayInput = document.getElementById('automation-submit-delay') as HTMLInputElement;
+
+    if (autoExecuteCheckbox) {
+      autoExecuteCheckbox.onchange = () => {
+        automationService.toggleAutoExecute();
+        console.log('[Sidebar] Auto Execute toggled:', automationService.getState().autoExecute);
+      };
+    }
+
+    if (autoInsertCheckbox) {
+      autoInsertCheckbox.onchange = () => {
+        automationService.toggleAutoInsert();
+        console.log('[Sidebar] Auto Insert toggled:', automationService.getState().autoInsert);
+      };
+    }
+
+    if (autoSubmitCheckbox) {
+      autoSubmitCheckbox.onchange = () => {
+        automationService.toggleAutoSubmit();
+        console.log('[Sidebar] Auto Submit toggled:', automationService.getState().autoSubmit);
+      };
+    }
+
+    if (executeDelayInput) {
+      executeDelayInput.onchange = () => {
+        const value = parseInt(executeDelayInput.value) || 0;
+        automationService.setAutoExecuteDelay(value);
+        console.log('[Sidebar] Execute Delay set to:', value);
+      };
+    }
+
+    if (insertDelayInput) {
+      insertDelayInput.onchange = () => {
+        const value = parseInt(insertDelayInput.value) || 0;
+        automationService.setAutoInsertDelay(value);
+        console.log('[Sidebar] Insert Delay set to:', value);
+      };
+    }
+
+    if (submitDelayInput) {
+      submitDelayInput.onchange = () => {
+        const value = parseInt(submitDelayInput.value) || 0;
+        automationService.setAutoSubmitDelay(value);
+        console.log('[Sidebar] Submit Delay set to:', value);
       };
     }
   }

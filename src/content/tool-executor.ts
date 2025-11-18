@@ -133,11 +133,14 @@ export class ToolExecutor {
 
         if (isError) {
           this.displayAutoExecuteError(toolCall, resultText, container);
+          this.dispatchToolExecutionComplete(toolCall, resultText, true);
         } else {
           this.displayAutoExecuteSuccess(toolCall, response.data, container);
+          this.dispatchToolExecutionComplete(toolCall, response.data, false);
         }
       } else {
         this.displayAutoExecuteError(toolCall, response.error || 'Unknown error', container);
+        this.dispatchToolExecutionComplete(toolCall, response.error || 'Unknown error', true);
       }
 
       // Reset button state after execution
@@ -145,6 +148,7 @@ export class ToolExecutor {
     } catch (error: any) {
       statusDiv.remove();
       this.displayAutoExecuteError(toolCall, error.message || 'Execution failed', container);
+      this.dispatchToolExecutionComplete(toolCall, error.message || 'Execution failed', true);
       // Reset button state after error
       this.resetButtonState(runBtn);
     } finally {
@@ -202,14 +206,37 @@ export class ToolExecutor {
 
       if (response.success) {
         this.displaySuccess(toolCall, response.data, button, container);
+        this.dispatchToolExecutionComplete(toolCall, response.data, false);
       } else {
         this.displayError(toolCall, response.error || 'Unknown error', button, container);
+        this.dispatchToolExecutionComplete(toolCall, response.error || 'Unknown error', true);
       }
     } catch (error: any) {
       this.displayError(toolCall, error.message || 'Execution failed', button, container);
+      this.dispatchToolExecutionComplete(toolCall, error.message || 'Execution failed', true);
     } finally {
       this.executingTools.delete(toolCall.id);
     }
+  }
+
+  /**
+   * Dispatch tool execution completion event for automation
+   */
+  private dispatchToolExecutionComplete(toolCall: DetectedToolCall, result: any, isError: boolean = false): void {
+    const resultText = isError ? `Error: ${result}` : this.formatToolResult(result);
+
+    const event = new CustomEvent('mcp:tool-execution-complete', {
+      detail: {
+        result: resultText,
+        toolName: toolCall.toolName,
+        callId: toolCall.id,
+        isFileAttachment: false,
+        skipAutoInsertCheck: isError,
+      }
+    });
+
+    document.dispatchEvent(event);
+    console.log('[ToolExecutor] Dispatched tool execution complete event for:', toolCall.toolName);
   }
 
   /**

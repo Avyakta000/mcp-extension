@@ -4,6 +4,7 @@ import { ToolExecutor } from './tool-executor';
 import { MCPModal, MCPSettings } from './mcp-modal';
 import { MCPSidebar, SidebarSettings } from './sidebar';
 import { MessageType, ConnectionStatus, MCPTool, DetectedToolCall } from '../types';
+import { AutomationService } from '../services/automation.service';
 
 class ChatGPTMCPExtension {
   private adapter: ChatGPTAdapter;
@@ -11,10 +12,12 @@ class ChatGPTMCPExtension {
   private executor: ToolExecutor;
   private modal: MCPModal;
   private sidebar: MCPSidebar;
+  private automationService: AutomationService;
   private connectionStatus: ConnectionStatus = { isConnected: false };
   private availableTools: MCPTool[] = [];
   private processedElements = new WeakSet<HTMLElement>();
   private observer: MutationObserver | null = null;
+  private urlCheckInterval: number | null = null;
   private mcpSettings: MCPSettings = {
     enabled: false,
     autoExecute: false,
@@ -22,12 +25,12 @@ class ChatGPTMCPExtension {
   };
   private mcpButton: HTMLButtonElement | null = null;
   private lastUrl: string = '';
-  private urlCheckInterval: number | null = null;
 
   constructor() {
     this.adapter = new ChatGPTAdapter();
     this.parser = new ToolCallParser();
     this.executor = new ToolExecutor(this.adapter);
+    this.automationService = AutomationService.getInstance(this.adapter);
 
     // Initialize sidebar first
     this.sidebar = new MCPSidebar(
@@ -67,6 +70,9 @@ class ChatGPTMCPExtension {
 
     // Connect to background script
     await this.connectToBackground();
+
+    // Initialize automation service
+    await this.automationService.initialize();
 
     // Create MCP button
     this.createMCPButton();

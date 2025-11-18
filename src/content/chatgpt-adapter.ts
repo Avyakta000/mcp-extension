@@ -212,6 +212,13 @@ export class ChatGPTAdapter {
   }
 
   /**
+   * Submit form - alias for clickSendButton
+   */
+  async submitForm(): Promise<boolean> {
+    return this.clickSendButton();
+  }
+
+  /**
    * Append text to existing input
    */
   appendText(text: string): boolean {
